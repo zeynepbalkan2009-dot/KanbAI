@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+  }
+}
+
+@layer utilities {
+  .decision-pass    { @apply bg-emerald-900/40 text-emerald-400 border border-emerald-700/50; }
+  .decision-fail    { @apply bg-red-900/40 text-red-400 border border-red-700/50; }
+  .decision-review  { @apply bg-amber-900/40 text-amber-400 border border-amber-700/50; }
+  .decision-pending { @apply bg-gray-800/60 text-gray-400 border border-gray-700/50; }
+  .decision-error   { @apply bg-red-950/60 text-red-500 border border-red-800/50; }
+}

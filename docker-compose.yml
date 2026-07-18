@@ -1,0 +1,306 @@
+﻿version: "3.9"
+
+x-backend-env: &backend-env
+  env_file: .env
+  environment:
+    - DATABASE_URL=${DATABASE_URL}
+    - REDIS_URL=${REDIS_URL}
+    - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+    - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+    - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    - JWT_REFRESH_SECRET_KEY=${JWT_REFRESH_SECRET_KEY}
+    - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+    - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+    - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+    - AI_INFERENCE_MODE=${AI_INFERENCE_MODE:-mock}
+    - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    - APP_ENV=${APP_ENV:-development}
+
+services:
+
+  # â”€â”€ PostgreSQL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  postgres:
+    image: postgres:15-alpine
+    container_name: qc_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-qcplatform}
+      POSTGRES_USER: ${POSTGRES_USER:-qcuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-qcpassword123}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-qcuser} -d ${POSTGRES_DB:-qcplatform}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - qc-net
+
+  # â”€â”€ Redis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  redis:
+    image: redis:7-alpine
+    container_name: qc_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-redispassword123}
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    volumes:
+      - redisdata:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispassword123}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - qc-net
+
+  # â”€â”€ MinIO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  minio:
+    image: minio/minio:latest
+    container_name: qc_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+    volumes:
+      - miniodata:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - qc-net
+
+  # â”€â”€ MinIO bucket init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  minio-init:
+    image: minio/mc:latest
+    container_name: qc_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin123};
+      mc mb --ignore-existing local/inspections;
+      mc mb --ignore-existing local/models;
+      mc mb --ignore-existing local/datasets;
+      mc anonymous set download local/models;
+      echo 'MinIO buckets ready';
+      "
+    networks:
+      - qc-net
+
+  # â”€â”€ FastAPI Backend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: qc_api
+    restart: unless-stopped
+    <<: *backend-env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./mlops:/app/mlops
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - qc-net
+
+  # â”€â”€ Celery Worker â€” Inference â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  worker-inference:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: qc_worker_inference
+    restart: unless-stopped
+    command: >
+      celery -A app.workers.celery_app worker
+      --loglevel=info
+      --queues=inference
+      --concurrency=2
+      --hostname=inference@%h
+    <<: *backend-env
+    volumes:
+      - ./backend:/app
+      - ./mlops:/app/mlops
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - qc-net
+
+  # â”€â”€ Celery Worker â€” General â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  worker-general:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: qc_worker_general
+    restart: unless-stopped
+    command: >
+      celery -A app.workers.celery_app worker
+      --loglevel=info
+      --queues=default,notifications
+      --concurrency=2
+      --hostname=general@%h
+    <<: *backend-env
+    volumes:
+      - ./backend:/app
+      - ./mlops:/app/mlops
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - qc-net
+
+  # â”€â”€ Celery Beat (scheduler) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: qc_celery_beat
+    restart: unless-stopped
+    command: >
+      celery -A app.workers.celery_app beat
+      --loglevel=info
+    <<: *backend-env
+    volumes:
+      - ./backend:/app
+      - ./mlops:/app/mlops
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - qc-net
+
+  # â”€â”€ MLflow Tracking Server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  mlflow:
+    image: python:3.11-slim
+    container_name: qc_mlflow
+    restart: unless-stopped
+    command: >
+      bash -c "pip install mlflow psycopg2-binary -q &&
+               mlflow server
+               --backend-store-uri postgresql://${POSTGRES_USER:-qcuser}:${POSTGRES_PASSWORD:-qcpassword123}@postgres:5432/${POSTGRES_DB:-qcplatform}
+               --default-artifact-root s3://models/mlflow
+               --host 0.0.0.0
+               --port 5000"
+    environment:
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ACCESS_KEY:-minioadmin}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_SECRET_KEY:-minioadmin123}
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - qc-net
+
+  # â”€â”€ Flower (Celery monitoring) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: qc_flower
+    restart: unless-stopped
+    command: >
+      celery -A app.workers.celery_app flower
+      --port=5555
+      --broker=${CELERY_BROKER_URL}
+    <<: *backend-env
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    networks:
+      - qc-net
+
+  # â”€â”€ Next.js Web â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      target: development
+    container_name: qc_web
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - qc-net
+
+  # â”€â”€ Nginx reverse proxy â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  nginx:
+    image: nginx:alpine
+    container_name: qc_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - web
+    networks:
+      - qc-net
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+
+networks:
+  qc-net:
+    driver: bridge
+

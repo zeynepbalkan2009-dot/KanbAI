@@ -1,0 +1,268 @@
+# MLOps Evolution Roadmap
+# MVP → Production AI → Global Industrial Platform
+# ================================================================
+
+roadmap:
+
+  # ──────────────────────────────────────────────────────────────
+  phase_1:
+    name: "MVP — Demo-Grade AI"
+    timeline: "0-3 ay"
+    goal: "Çalışan demo, yatırımcı sunumu, ilk fabrika pilotu"
+    status: "current"
+
+    components:
+      inference:
+        mode: mock
+        backend: "MockInferenceService (asyncio sleep + random)"
+        swap_ready: true
+        note: "AI_INFERENCE_MODE=yolo ile tek satırda gerçek modele geçiş"
+
+      dataset:
+        sources:
+          - name: MVTec AD
+            categories: [metal_nut, screw]
+            size: ~1200
+            format: mask → YOLO bbox
+          - name: NEU Surface Defect
+            size: 1800
+            format: VOC XML → YOLO
+        pipeline: "download → preprocess → augment (3x) → split 70/20/10"
+        versioning: "hash-based JSON manifest"
+
+      model:
+        architecture: YOLOv8n
+        task: detect
+        binary_mode: true          # good / defect (2 class)
+        imgsz: 640
+        epochs: 100
+        device: cpu
+        expected_map50: ">0.80"
+        inference_latency_cpu: "200-400ms"
+
+      tracking:
+        tool: "MLflow (local SQLite)"
+        tracked: [metrics, params, artifacts, data_yaml]
+
+      registry:
+        type: "JSON file registry"
+        features: [versioning, promotion, rollback, comparison]
+
+      hitl:
+        enabled: true
+        review_threshold: 0.50-0.75
+        dataset_contribution: true
+        retraining_trigger: "200 new annotations"
+
+      deployment:
+        mode: "Docker Compose (local / single VPS)"
+        model_serving: "FastAPI endpoint + Celery worker"
+
+    deliverables:
+      - "✅ Mock AI pipeline çalışıyor"
+      - "✅ Real-time WebSocket dashboard"
+      - "✅ HITL review queue"
+      - "✅ Model registry (local)"
+      - "⏳ YOLOv8n training on MVTec+NEU"
+      - "⏳ ONNX export + CPU inference"
+
+  # ──────────────────────────────────────────────────────────────
+  phase_2:
+    name: "Production AI — First Customer"
+    timeline: "3-9 ay"
+    goal: "İlk fabrika müşterisi, gerçek veri, model iyileştirme"
+
+    components:
+      inference:
+        mode: onnx
+        backend: "ONNXRuntime (CPU optimized)"
+        latency_target: "<150ms CPU, <30ms GPU"
+        batch_support: true
+        multi_model: true          # per-factory model weights
+
+      dataset:
+        proprietary_data:
+          source: "İlk fabrika kameraları (canlı veri)"
+          daily_volume: "500-2000 görüntü/gün"
+          annotation: "HITL pipeline → otomatik etiketleme"
+        data_flywheel:
+          week_1_4:   "manuel annotation + bootstrap"
+          week_5_12:  "HITL'dan 1000+ annotation"
+          month_4_plus: "active learning loop"
+
+      model:
+        architecture: YOLOv8s      # upgrade nano → small
+        task: detect
+        multi_class: true          # 6-15 defect sınıfı
+        per_factory_finetune: true
+        expected_map50: ">0.88"
+        inference_latency_cpu: "<150ms"
+
+      tracking:
+        tool: "MLflow Tracking Server (PostgreSQL backend)"
+        features:
+          - experiment comparison
+          - metric history plots
+          - artifact versioning
+          - model lineage
+
+      registry:
+        type: "MLflow Model Registry"
+        stages: [development, staging, production, archived]
+        features:
+          - A/B test assignment
+          - canary deployment
+          - automatic rollback on metric drop
+
+      drift_detection:
+        method: "KS test on confidence distributions"
+        window: 1000 inspections
+        alert_threshold: 0.15
+        auto_retrain: true
+
+      active_learning:
+        strategy: "uncertainty sampling"
+        selection: "confidence 0.40-0.65 → review queue priority"
+        budget: "50 samples/day operator time"
+
+      retraining:
+        trigger:
+          - "200+ HITL contributions"
+          - "drift score > 0.15"
+          - "weekly scheduled (Sunday 02:00)"
+        pipeline: "DVC + MLflow + Celery beat"
+        validation: "holdout test set mAP50 must not drop > 0.02"
+
+      deployment:
+        mode: "Docker Compose + nginx"
+        model_hot_reload: true
+        blue_green: false          # not yet
+
+    new_deliverables:
+      - "MLflow Tracking Server"
+      - "DVC dataset versioning"
+      - "ONNX serving pipeline"
+      - "Per-factory model weights"
+      - "Automated retraining (Celery beat)"
+      - "Drift detection alerts"
+      - "Active learning queue"
+
+  # ──────────────────────────────────────────────────────────────
+  phase_3:
+    name: "Scale — Multi-Factory"
+    timeline: "9-18 ay"
+    goal: "10+ fabrika, GPU inference, edge deployment"
+
+    components:
+      inference:
+        mode: triton               # NVIDIA Triton Inference Server
+        backends:
+          - TensorRT (GPU, <10ms)
+          - ONNX Runtime (CPU fallback)
+          - OpenVINO (Intel edge)
+        dynamic_batching: true
+        model_ensemble: true       # classification + detection birlikte
+
+      edge_deployment:
+        target_devices:
+          - "NVIDIA Jetson Nano/Xavier"
+          - "Intel NUC + OpenVINO"
+          - "Raspberry Pi 4 (ONNX INT8)"
+        model_optimization:
+          - "ONNX INT8 quantization (4x speedup on CPU)"
+          - "TensorRT FP16/INT8 (GPU)"
+          - "Model pruning (torchprune)"
+        ota_updates: "MinIO model store → edge pull on version bump"
+
+      model_architecture:
+        backbone: "YOLOv8m → custom backbone evaluation"
+        anomaly_detection:
+          - "PatchCore (no annotation needed for new products)"
+          - "FastFlow (normalizing flow)"
+          - "EfficientAD"
+        multi_task:
+          - "Detection + Classification jointly"
+          - "Defect severity scoring"
+
+      mlops_stack:
+        experiment_tracking: "MLflow"
+        data_versioning:     "DVC + MinIO remote"
+        pipeline_orchestration: "Prefect / Airflow"
+        feature_store:       "Feast (defect embeddings)"
+        model_serving:       "Triton Inference Server"
+        monitoring:          "Evidently AI + Grafana"
+
+      dataset:
+        size: "50,000+ proprietary images"
+        multi_factory: true
+        federated_annotation: true
+        synthetic_augmentation:
+          - "Stable Diffusion defect inpainting"
+          - "Copy-paste augmentation"
+
+      kubernetes:
+        gpu_nodes:      "2x T4 inference nodes"
+        cpu_nodes:      "4x worker nodes"
+        autoscaling:    "HPA on inference queue depth"
+        model_serving:  "Triton + Kubernetes Deployment"
+
+    new_deliverables:
+      - "Triton Inference Server"
+      - "Edge deployment pipeline"
+      - "ONNX INT8 quantization"
+      - "Anomaly detection (PatchCore)"
+      - "Prefect pipeline orchestration"
+      - "Evidently drift monitoring"
+
+  # ──────────────────────────────────────────────────────────────
+  phase_4:
+    name: "Foundation Model — Proprietary AI"
+    timeline: "18-36 ay"
+    goal: "Sektöre özel foundation model, global platform"
+
+    components:
+      foundation_model:
+        approach: "Fine-tune industrial vision foundation model"
+        candidates:
+          - name: DINOv2
+            org: Meta
+            strategy: "Linear probe + LoRA fine-tune on proprietary data"
+            strength: "Self-supervised, minimal labeled data needed"
+          - name: "CLIP (OpenAI)"
+            strategy: "Zero-shot defect classification"
+            strength: "Text-guided defect search"
+          - name: "Segment Anything (SAM)"
+            strategy: "Auto-segmentation → YOLO label generation"
+            strength: "Dramatically reduce annotation cost"
+          - name: "Custom ViT"
+            strategy: "Train from scratch on 500K+ proprietary images"
+            strength: "Best accuracy, full IP ownership"
+
+      data_moat:
+        proprietary_dataset:
+          target_size: "500,000+ labeled images"
+          factories: "50+"
+          defect_classes: "100+"
+          value: "Rakiplerin kopyalayamayacağı veri avantajı"
+        data_flywheel:
+          - "Her fabrika → daha fazla veri"
+          - "Daha fazla veri → daha iyi model"
+          - "Daha iyi model → daha az operatör zamanı"
+          - "Daha az maliyet → daha fazla müşteri"
+
+      federated_learning:
+        approach: "FedAvg across factory nodes"
+        privacy: "Differential privacy + secure aggregation"
+        benefit: "Fabrikalar veriyi paylaşmadan birlikte öğrenir"
+
+      benchmark:
+        internal: "Proprietary test set across all factory types"
+        public: "MVTec AD, VisA, BTAD benchmarks"
+        target: "SOTA on industrial anomaly detection"
+
+    competitive_moat:
+      - "500K+ proprietary labeled images (3+ yıl birikimi)"
+      - "Factory-specific fine-tuned models"
+      - "Real-time edge + cloud hybrid inference"
+      - "Active learning flywheel"
+      - "Multi-modal (vision + sensor data fusion)"

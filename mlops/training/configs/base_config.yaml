@@ -1,0 +1,61 @@
+# ── QC Platform — YOLOv8 Training Config ─────────────────────────────────────
+# Base configuration — override per factory/experiment
+
+# Model
+model: yolov8n.pt          # n=nano (CPU-friendly), s=small, m=medium
+task: detect
+
+# Dataset
+data: dataset/yolo/v1.0/binary/data.yaml
+imgsz: 640
+
+# Training
+epochs: 100
+patience: 20               # early stopping
+batch: 16                  # reduce to 8 for CPU training
+workers: 4
+
+# Optimizer
+optimizer: AdamW
+lr0: 0.001
+lrf: 0.01                  # final lr = lr0 * lrf
+momentum: 0.937
+weight_decay: 0.0005
+warmup_epochs: 3.0
+warmup_momentum: 0.8
+warmup_bias_lr: 0.1
+
+# Augmentation (Ultralytics built-in, ON TOP of albumentations)
+hsv_h: 0.015               # hue shift
+hsv_s: 0.7                 # saturation
+hsv_v: 0.4                 # value/brightness
+degrees: 15.0              # rotation ±15°
+translate: 0.1
+scale: 0.5
+shear: 0.0
+perspective: 0.0001
+flipud: 0.5                # vertical flip (industrial conveyor = ok)
+fliplr: 0.5
+mosaic: 1.0                # mosaic augmentation
+mixup: 0.1
+copy_paste: 0.1            # copy-paste for small defect augmentation
+
+# Loss weights
+box: 7.5
+cls: 0.5
+dfl: 1.5
+
+# Validation
+val: true
+plots: true
+save: true
+save_period: 10
+
+# Export
+half: false                # FP16 — enable for GPU
+
+# Project
+project: runs/detect
+name: qc_defect_v1
+exist_ok: false
+verbose: true

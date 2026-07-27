@@ -30,6 +30,7 @@ The repository is ready for final review before commit and push. Docker runtime 
 | Backend service image rebuild | PASS |
 | GitHub Actions CI workflow | READY |
 | Demo endpoint production guard | PASS |
+| Initial Alembic migration | READY |
 
 ## Git Hygiene
 
@@ -46,11 +47,10 @@ Excluded from Git:
 ## Remaining Before Production
 
 1. Replace mock inference with trained factory model weights.
-2. Add database migrations for production databases.
-3. Rotate demo secrets.
-4. Keep `DEMO_MODE=false` in production and audit any demo reset/seed access.
-5. Expand CI with API integration tests once a test database workflow is added.
-6. Add trusted HTTPS certificates for real tablets.
+2. Rotate demo secrets.
+3. Keep `DEMO_MODE=false` in production and audit any demo reset/seed access.
+4. Expand CI with API integration tests once a test database workflow is added.
+5. Add trusted HTTPS certificates for real tablets.
 
 ## Recommended Push
 

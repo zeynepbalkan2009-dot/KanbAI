@@ -56,6 +56,8 @@ npm run build
 | Backend image rebuild | PASS | API/worker/beat/flower images rebuilt with `bcrypt==4.1.3` baked in |
 | API runtime mode | PASS | API now runs without `--reload` in Compose for stable demo behavior |
 | Demo endpoint production guard | PASS | `/mlops/demo/reset` and `/mlops/demo/seed` are blocked when `APP_ENV=production`, even if `DEMO_MODE=true` |
+| Initial Alembic migration | READY | `20260727_0001_initial_factory_pilot_schema.py` creates the current factory pilot schema |
+| HTTPS route smoke check | PASS | Self-signed local HTTPS checks use short-timeout GET requests for reliable Windows demo validation |
 
 ## Completed Product Improvements
 
@@ -72,6 +74,8 @@ npm run build
 - Upgraded `scripts/smoke-test.ps1` into a full factory demo acceptance test.
 - Rebuilt backend service images and removed API reload mode from Compose to avoid demo-time reloader instability.
 - Added `DEMO_MODE` config and production guard for demo reset/seed endpoints.
+- Added an initial Alembic migration for fresh PostgreSQL deployments.
+- Hardened the smoke test HTTPS route checks for local self-signed demo certificates.
 
 ## Demo Scenario Status
 
@@ -91,13 +95,12 @@ npm run build
 ## Remaining Gaps By Priority
 
 1. **Real factory model weights**: current inference is deterministic demo/mock mode. Replace with pilot-trained model once sample images are collected.
-2. **Production database migrations**: new tables are created by app startup for demo, but Alembic migrations are required before any long-lived production database.
-3. **Trusted tablet HTTPS**: local HTTPS works with self-signed cert. For real factory tablets, install a trusted local CA/cert or use a real domain.
-4. **Role-based access depth**: admin/operator quality roles exist, but finer permission boundaries should be enforced for production.
-5. **Audit trail depth**: HITL decisions are captured, but production needs tamper-evident audit export and reviewer attribution reports.
-6. **Real image thumbnails**: demo maps thumbnail keys to original images. Add worker-generated thumbnails for large real deployments.
-7. **Automated E2E browser tests**: manual/API validation passed; Playwright tests should cover login, capture fallback, HITL and dashboard updates.
-8. **Docker host capacity**: backend image rebuild succeeded, but keep at least 20-30 GB free on `C:` or move Docker data to `D:` to avoid future rebuild instability.
+2. **Trusted tablet HTTPS**: local HTTPS works with self-signed cert. For real factory tablets, install a trusted local CA/cert or use a real domain.
+3. **Role-based access depth**: admin/operator quality roles exist, but finer permission boundaries should be enforced for production.
+4. **Audit trail depth**: HITL decisions are captured, but production needs tamper-evident audit export and reviewer attribution reports.
+5. **Real image thumbnails**: demo maps thumbnail keys to original images. Add worker-generated thumbnails for large real deployments.
+6. **Automated E2E browser tests**: manual/API validation passed; Playwright tests should cover login, capture fallback, HITL and dashboard updates.
+7. **Docker host capacity**: backend image rebuild succeeded, but keep at least 20-30 GB free on `C:` or move Docker data to `D:` to avoid future rebuild instability.
 
 ## Demo Day Runbook
 

@@ -78,6 +78,16 @@ Run the full factory acceptance smoke test:
 
 This validates readiness, admin login, demo reset/seed, device activation, photo upload, AI inference, dashboard stats, HITL review, dataset contribution, MLOps registry, CSV export and HTTPS web routes.
 
+## Database Migrations
+
+For a fresh PostgreSQL database, run:
+
+```powershell
+docker compose exec api alembic upgrade head
+```
+
+The demo stack also creates tables automatically in development mode for convenience, but production and long-lived pilots should use Alembic migrations.
+
 ## Useful URLs
 
 ```text
@@ -105,7 +115,7 @@ MLOps demo:     http://localhost:5000
 This is a factory-ready demo, not a hardened production deployment. Before production use:
 
 - Replace mock inference with trained factory model weights.
-- Add and run database migrations.
+- Run Alembic migrations against production databases.
 - Rotate every secret from `.env.example`.
 - Disable or restrict demo seed/reset endpoints.
 - Use trusted HTTPS certificates for tablets and factory laptops.

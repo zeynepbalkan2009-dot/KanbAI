@@ -48,7 +48,7 @@ function Invoke-Json($Method, $Url, $Headers = @{}, $Body = $null) {
 function Test-WebRoute($Url) {
   if ($AllowSelfSigned -and $Url.StartsWith("https://")) {
     $env:KANBAI_ROUTE_URL = $Url
-    $status = python -c "import os, ssl, urllib.request; ctx=ssl._create_unverified_context(); req=urllib.request.Request(os.environ['KANBAI_ROUTE_URL'], method='HEAD'); print(urllib.request.urlopen(req, context=ctx, timeout=90).status)"
+    $status = python -c "import os, ssl, urllib.request; ctx=ssl._create_unverified_context(); print(urllib.request.urlopen(os.environ['KANBAI_ROUTE_URL'], context=ctx, timeout=15).status)"
     if ($LASTEXITCODE -ne 0) {
       throw "$Url route check failed"
     }

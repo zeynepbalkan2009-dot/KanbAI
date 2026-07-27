@@ -59,9 +59,6 @@ mlops/dataset/processed/
 mlops/dataset/versions/
 mlops/dataset/yolo/
 
-# Alembic generated revisions for demo package
-backend/alembic/versions/*.py
-
 # Generated delivery packages
 outputs/
 

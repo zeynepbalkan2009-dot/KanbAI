@@ -1,58 +1,107 @@
-# İTÜ Çekirdek BİGG Demo Session Guide
+# ITU Cekirdek BIGG Demo Session Guide
 
-## 1. One-line pitch
+## 1. One-Line Pitch
 
-Kanba QC Platform, fabrikaların telefon/kamera tabanlı kalite kontrol verisini merkezi bir SaaS panelinde toplayan, AI destekli hata tespiti yapan ve model performansını MLOps + HITL döngüsüyle sürekli iyileştiren endüstriyel kalite kontrol altyapısıdır.
+KanbAI is an Industrial AI Quality Control Platform that helps factories capture inspection photos, detect defects with AI, validate uncertain cases through human-in-the-loop review, and turn every inspection into training data for continuous model improvement.
 
 ## 2. Problem
 
-Fabrikalarda kalite kontrol çoğu zaman parçalı ilerliyor: operatör gözlemi, Excel raporları, manuel fotoğraf arşivleri ve geç fark edilen üretim hataları. Bu durum hurda maliyetini artırıyor, izlenebilirliği düşürüyor ve üretim yöneticisine gerçek zamanlı karar imkânı vermiyor.
+Factory quality control is often fragmented across manual visual checks, spreadsheets, isolated photo folders and late defect reports. This increases scrap cost, weakens traceability and prevents factory leaders from seeing quality risk in real time.
 
-## 3. Çözüm
+## 3. Solution
 
-Kanba QC Platform üç parçadan oluşur:
+KanbAI combines three layers:
 
-1. Yönetici web paneli: canlı sağlam/hurda metrikleri, cihaz yönetimi, MLOps ekranı.
-2. Backend: yetkilendirme, veri toplama, PostgreSQL/MinIO kayıtları, AI inference, event stream.
-3. Mobil uç nokta: yetkili telefon/kamera ile parça görüntüsü gönderme.
+1. Operator capture: tablet/laptop photo capture at the inspection station.
+2. Quality CRM: inspection records, dashboards, device status, HITL review and CSV export.
+3. Learning system: dataset contribution, retraining counter, model registry and model lifecycle story.
 
-## 4. Demo flow
+The product is intentionally more than a defect detector. It is the workflow and data layer around industrial inspection.
 
-1. Web paneli aç: `http://localhost:3000`
-2. Admin ile giriş yap: `admin@demo.com / Admin123!`
-3. Dashboard’da üretim kalite metriklerini göster.
-4. MLOps ekranına geç.
-5. Demo verisi üret:
+## 4. Demo Flow
 
-```bash
-curl -X POST "http://localhost:8000/api/v1/mlops/demo/seed?scenario=metal&count=200" \
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
+Recommended path:
+
+```text
+Investor Demo -> Factory Overview -> Capture -> Inspection Records -> HITL Review -> Learning Ops
 ```
 
-6. HITL queue bölümünü göster: AI kararından emin olmadığında insan onayı akışı.
-7. Model registry alanını göster: production/staging model mantığı.
-8. Retraining butonunu göster: operatör düzeltmeleri ve drift sinyalleri yeni model eğitimine girdi olur.
-9. Kapanış: Bugün mock inference ile canlı demo; gerçek fabrika datası geldikçe YOLOv8/ONNX modeli aynı mimariye bağlanır.
+Open:
 
-## 5. Demo konuşma metni
+```text
+https://localhost/dashboard/executive
+```
 
-"Bu sistem, fabrikalarda kalite kontrolü sadece anlık bir kontrol noktası olmaktan çıkarıp merkezi, ölçülebilir ve öğrenen bir veri altyapısına dönüştürüyor. Operatör telefondan fotoğraf çekiyor, backend görüntüyü analiz ediyor, sonuç dashboard’a düşüyor. AI emin değilse HITL kuyruğuna alıyoruz. İnsan onayları dataset’e katkı oluyor ve sistem zamanla yeniden eğitiliyor. Böylece her fabrika kendi üretim gerçekliğine göre daha iyi çalışan bir kalite kontrol modeline sahip oluyor."
+Login:
 
-## 6. Demo riskleri ve cevapları
+```text
+admin@demo.com
+Admin123!
+```
 
-### Soru: Gerçek YOLO modeli hazır mı?
+Before the live session, run:
 
-Cevap: Demo modunda mock inference çalışıyor. Mimari YOLOv8 ve ONNX backend’e hazır. İlk pilotta gerçek fabrika görselleri toplanıp model eğitimi yapılacak.
+```powershell
+.\scripts\start-pilot-https.ps1 -PrimeDemo
+.\scripts\smoke-test.ps1 -ApiBaseUrl 'http://localhost:8000' -WebBaseUrl 'https://localhost' -AllowSelfSigned -SeedCount 8
+```
 
-### Soru: Neden telefon?
+Expected result:
 
-Cevap: MVP’de hızlı kurulum için telefon/kamera uç noktası kullanıyoruz. Aynı backend daha sonra endüstriyel kamera, PLC veya edge cihazlara bağlanabilir.
+```text
+KanbAI factory demo acceptance test passed.
+```
 
-### Soru: B2B SaaS olarak nasıl ölçeklenir?
+## 5. Founder Talk Track
 
-Cevap: Her fabrika tenant olarak ayrılıyor. Cihaz, kullanıcı, inspection ve model deployment kayıtları factory_id ile izole ediliyor. Altyapı Docker Compose demo seviyesinde, Kubernetes’e taşınabilir.
+"KanbAI turns factory inspection into a continuously learning quality system. An operator captures a part photo, AI detects potential defects, and uncertain or failed cases go to a human review queue. Every human correction becomes labeled training data. Over time, each factory builds a model that understands its own parts, defects, lighting, stations and production reality."
 
-### Soru: Rekabet avantajı ne?
+## 6. What To Show
 
-Cevap: Sadece görüntü analizi değil; veri toplama, kalite paneli, HITL, model registry, drift ve retraining döngüsü tek platformda.
+- Executive dashboard: factory health, savings and AI performance.
+- Factory overview: stations, production line state and device status.
+- Capture screen: photo upload, GPS, timestamp, battery, offline queue and AI result.
+- Inspection records: CRM-style searchable history.
+- HITL panel: approve, reject, wrong prediction and label correction.
+- MLOps dashboard: current model, next model, dataset growth and retraining story.
 
+## 7. Expected Questions
+
+### Is this only a mock AI demo?
+
+The current demo uses deterministic inference so live sessions are stable. The architecture is ready for trained YOLO/ONNX or another vision model once pilot images are collected.
+
+### Why will factories keep using this?
+
+Because the product gets more valuable with use. Each inspection creates operational traceability, and each human review improves the factory-specific dataset.
+
+### What is the moat?
+
+Customer-specific inspection data, validated by factory quality teams and connected to production workflow. The model improves around each factory's own visual reality.
+
+### What must a pilot prove?
+
+- Faster inspection workflow.
+- Lower missed-defect risk.
+- Lower manual review load.
+- Better defect traceability.
+- Growth of a useful labeled dataset.
+- Clear path from v1 model to improved factory-specific model.
+
+## 8. Recovery Lines
+
+If camera permission fails:
+
+"We use the built-in fallback capture path for the live demo. In a real tablet pilot, we use trusted HTTPS or a managed certificate so camera permission is stable."
+
+If the model is challenged:
+
+"The product advantage is the learning loop. We start with stable inference, collect factory-specific examples, validate them with quality engineers, and retrain the model around the factory's own defects."
+
+If WebSocket status looks inactive:
+
+"The backend and database are live; dashboard data can be refreshed after the inspection. The acceptance test validates the full API path."
+
+## 9. Closing
+
+KanbAI starts with visual quality control, but the long-term product is a learning infrastructure layer for factories: inspection, human validation, dataset growth, retraining and model governance in one system.

@@ -59,10 +59,10 @@ Primary line:
 
 ### P0 - Before live factory trial
 
-- Add local HTTPS/PWA mode for tablet camera access from another device.
-- Add one-command demo reset that creates a clean scripted dataset and clears noisy old records.
 - Replace mock inference with at least one real model or real sample-based inference path.
-- Add QR-based device activation UX for factory stations.
+- Add 3-5 permission-safe real factory sample images for the live narrative.
+- Use a trusted certificate/tunnel for tablet camera tests from a separate device.
+- Rehearse the full demo on the exact laptop/tablet/network that will be used in the meeting.
 
 Current status:
 
@@ -72,14 +72,16 @@ Current status:
 - HTTPS pilot mode exists via `scripts/start-pilot-https.ps1`.
 - Device activation center exists at `/dashboard/devices`.
 - Tablet activation page exists at `/activate-device?token=...`.
-- Camera still requires the tablet to trust the self-signed certificate, or a trusted certificate/tunnel must be used.
+- Factory handoff runbook exists in `FACTORY_PILOT_HANDOFF.md`.
+- Full acceptance validation exists in `scripts/smoke-test.ps1`.
+- Camera still requires the tablet to trust the self-signed certificate, or a trusted certificate/tunnel must be used for separate-device tests.
 
 ### P1 - Before YC/a16z-style interview
 
-- Prepare a 90-second founder script and a 5-minute technical demo script.
 - Add real pilot economics: inspection volume, scrap cost, rework cost, false negative cost.
-- Add 3-5 real factory sample photos with permission-safe anonymization.
 - Add a short model improvement story: v1.8 to v1.9, dataset growth, accuracy lift.
+- Tighten the founder script around one quantified before/after pilot case.
+- Prepare a 60-second fallback video or screen recording in case live network conditions fail.
 
 ### P2 - Before enterprise procurement
 

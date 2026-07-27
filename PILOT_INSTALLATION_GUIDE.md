@@ -12,11 +12,46 @@ Bu rehber KanbAI pilotunu tek makinede Docker Compose ile ayağa kaldırmak içi
 ## Kurulum
 1. `scripts/check-prerequisites.ps1` calistir.
 2. `.env.example` dosyasini `.env` olarak kopyala ve gizli degerleri degistir.
-3. `scripts/start-pilot.ps1` calistir.
-4. Backend: `http://localhost:8000/health`
-5. Web: `http://localhost:3000`
-6. MinIO Console: `http://localhost:9001`
-7. MLflow: `http://localhost:5000`
+3. Fabrika/tablet demolarinda `scripts/start-pilot-https.ps1 -PrimeDemo` calistir.
+4. Laptop-only HTTP demo icin `scripts/start-pilot.ps1` calistir.
+
+## Ana URL'ler
+
+HTTPS pilot modu:
+
+```text
+https://localhost/dashboard/executive
+```
+
+HTTP fallback:
+
+```text
+http://localhost
+```
+
+Servis kontrolleri:
+
+```text
+Backend:       http://localhost:8000/health
+Readiness:     http://localhost:8000/ready
+Web container: http://localhost:3000
+MinIO Console: http://localhost:9001
+MLflow:        http://localhost:5000
+```
+
+## Kabul Testi
+
+Kurulumdan sonra calistir:
+
+```powershell
+.\scripts\smoke-test.ps1 -ApiBaseUrl 'http://localhost:8000' -WebBaseUrl 'https://localhost' -AllowSelfSigned -SeedCount 8
+```
+
+Basarili cikti:
+
+```text
+KanbAI factory demo acceptance test passed.
+```
 
 ## Demo Kullanici
 - Admin: `admin@demo.com`

@@ -245,8 +245,8 @@ If Docker is slow:
 Send the factory:
 
 - Screenshots of their demo flow.
-- A one-page pilot proposal.
-- Data collection checklist.
+- `PILOT_PROPOSAL_ONE_PAGER.md`.
+- `FACTORY_DATA_COLLECTION_PROTOCOL.md`.
 - Security and deployment assumptions.
 - Timeline for connecting real model weights.
 

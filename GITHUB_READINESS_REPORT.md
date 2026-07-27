@@ -7,7 +7,7 @@ Branch: `main`
 
 ## Status
 
-The repository is ready for final review before commit and push. Docker runtime validation is no longer blocked: the full stack has been run locally and the factory demo acceptance test passes.
+The repository is ready for factory pilot review and GitHub handoff. Docker runtime validation is no longer blocked: the full stack has been run locally and the factory demo acceptance test passes.
 
 ## Validated
 
@@ -31,6 +31,7 @@ The repository is ready for final review before commit and push. Docker runtime 
 | GitHub Actions CI workflow | READY |
 | Demo endpoint production guard | PASS |
 | Initial Alembic migration | READY |
+| Factory pilot handoff package | READY |
 
 ## Git Hygiene
 
@@ -57,6 +58,6 @@ Excluded from Git:
 ```powershell
 git status --short
 git add .
-git commit -m "Add KanbAI CI quality gate"
+git commit -m "Add factory pilot proposal package"
 git push -u origin main
 ```

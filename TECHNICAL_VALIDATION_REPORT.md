@@ -77,6 +77,7 @@ npm run build
 - Added an initial Alembic migration for fresh PostgreSQL deployments.
 - Hardened the smoke test HTTPS route checks for local self-signed demo certificates.
 - Added a factory pilot handoff package for field demos, role-based UX walkthrough and recovery steps.
+- Added pilot proposal and data collection protocol documents for real factory trials.
 
 ## Demo Scenario Status
 

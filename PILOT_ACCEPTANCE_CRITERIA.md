@@ -14,6 +14,21 @@
 - CSV export kalite ekibine verilebilir.
 - Smoke test tek komutla calisir.
 - Demo seed sifirdan kurulumda otomatik gelir.
+- HTTPS pilot modu tablet/laptop kamera testleri icin acilabilir.
+- HITL review dataset contribution sayacini gunceller.
 
-## Known Blocker
-Bu makinede Docker CLI bulunmadigi icin container runtime kabul testi yerelde tamamlanamadi.
+## Current Validation
+
+Docker runtime testi tamamlandi. PostgreSQL, Redis, MinIO, API, web, nginx, Celery worker/beat, Flower ve MLOps demo servisleri ayaga kalkti. Tam factory acceptance smoke test gecti.
+
+Son kabul komutu:
+
+```powershell
+.\scripts\smoke-test.ps1 -ApiBaseUrl 'http://localhost:8000' -WebBaseUrl 'https://localhost' -AllowSelfSigned -SeedCount 8
+```
+
+Beklenen sonuc:
+
+```text
+KanbAI factory demo acceptance test passed.
+```

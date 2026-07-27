@@ -32,6 +32,7 @@ The default mode is `AI_INFERENCE_MODE=mock` so the full workflow is stable with
 - Workers: Celery inference/general workers, Celery Beat, Flower
 - MLOps: lightweight demo model registry, dataset/HITL/retraining surfaces
 - Proxy: Nginx with local HTTPS pilot mode
+- Demo web container: Next.js standalone production server
 
 ## Quick Start
 
@@ -65,7 +66,7 @@ Admin123!
 ## Recommended Demo Path
 
 ```text
-Investor Demo -> Factory Overview -> Capture -> Inspection Records -> Review Queue -> Learning Ops -> Factory Devices
+Investor Demo -> Pilot Workspace -> Factory Overview -> Capture -> Inspection Records -> Review Queue -> Learning Ops -> Factory Devices
 ```
 
 ## Demo Acceptance Test
@@ -92,6 +93,7 @@ The demo stack also creates tables automatically in development mode for conveni
 
 ```text
 Web app:        https://localhost/dashboard/executive
+Pilot workspace:https://localhost/dashboard/pilot
 HTTP web app:   http://localhost
 API health:     http://localhost:8000/ready
 API docs:       http://localhost:8000/docs

@@ -58,6 +58,8 @@ npm run build
 | Demo endpoint production guard | PASS | `/mlops/demo/reset` and `/mlops/demo/seed` are blocked when `APP_ENV=production`, even if `DEMO_MODE=true` |
 | Initial Alembic migration | READY | `20260727_0001_initial_factory_pilot_schema.py` creates the current factory pilot schema |
 | HTTPS route smoke check | PASS | Self-signed local HTTPS checks use short-timeout GET requests for reliable Windows demo validation |
+| Pilot Workspace route | PASS | `/dashboard/pilot` is included in production build and HTTPS smoke validation |
+| Docker web runtime | PASS | Web service uses the Next.js standalone production target instead of live dev compilation |
 
 ## Completed Product Improvements
 
@@ -78,6 +80,8 @@ npm run build
 - Hardened the smoke test HTTPS route checks for local self-signed demo certificates.
 - Added a factory pilot handoff package for field demos, role-based UX walkthrough and recovery steps.
 - Added pilot proposal and data collection protocol documents for real factory trials.
+- Added a dashboard Pilot Workspace for CRM-style pilot readiness, scope, dataset targets and risk tracking.
+- Switched the Docker web service to the Next.js standalone production target to avoid live-demo route compilation delays.
 
 ## Demo Scenario Status
 

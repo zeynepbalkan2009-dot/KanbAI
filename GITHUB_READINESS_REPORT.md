@@ -25,8 +25,10 @@ The repository is ready for factory pilot review and GitHub handoff. Docker runt
 | MLOps registry | PASS |
 | CSV export | PASS |
 | HTTPS web routes | PASS |
+| Pilot Workspace route | PASS |
 | Web TypeScript | PASS |
 | Web production build | PASS |
+| Docker web production target | PASS |
 | Backend service image rebuild | PASS |
 | GitHub Actions CI workflow | READY |
 | Demo endpoint production guard | PASS |

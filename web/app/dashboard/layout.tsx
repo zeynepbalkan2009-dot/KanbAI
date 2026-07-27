@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/lib/store/auth";
 import {
   LayoutDashboard, Activity, LogOut, Camera,
-  Wifi, WifiOff, ChevronRight, Brain, ClipboardCheck, Building2, Presentation, TabletSmartphone, Map,
+  Wifi, WifiOff, ChevronRight, Brain, ClipboardCheck, Building2, Presentation, TabletSmartphone, Map, Target,
 } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useInspectionStore } from "@/lib/store/inspections";
@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 
 const NAV = [
   { href: "/dashboard", label: "Workspace", icon: LayoutDashboard },
+  { href: "/dashboard/pilot", label: "Pilot Workspace", icon: Target },
   { href: "/dashboard/factory", label: "Factory Overview", icon: Map },
   { href: "/dashboard/capture", label: "Capture", icon: Camera },
   { href: "/dashboard/devices", label: "Factory Devices", icon: TabletSmartphone },

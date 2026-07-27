@@ -26,18 +26,22 @@ Primary line:
    - Optional terminal prep: `.\scripts\prime-demo.ps1 -Count 100`
    - Tablet prep: `.\scripts\start-pilot-https.ps1 -PrimeDemo`
 
-2. Open `Capture`
+2. Open `Pilot Workspace`
+   - Show the readiness score, pilot scope, dataset targets and risk register.
+   - Position KanbAI as a factory account workflow, not a loose AI demo.
+
+3. Open `Capture`
    - Operator captures or simulates one inspection photo.
    - AI returns a deterministic defect result for demo metadata.
 
-3. Open `Review Queue`
+4. Open `Review Queue`
    - Quality manager validates the case.
    - The case becomes a dataset contribution.
 
-4. Open `Learning Ops`
+5. Open `Learning Ops`
    - Show dataset growth, retraining counter, current model, next model, and model registry.
 
-5. Return to `Investor Demo`
+6. Return to `Investor Demo`
    - Close with savings, workflow adoption, and data moat.
 
 ## What Must Be True During The Demo
@@ -104,6 +108,7 @@ KanbAI should be presented as:
 ## Current Demo URLs
 
 - Executive / Investor: `http://localhost/dashboard/executive`
+- Pilot Workspace: `http://localhost/dashboard/pilot`
 - Operator Capture: `http://localhost/dashboard/capture`
 - Factory Devices: `http://localhost/dashboard/devices`
 - Tablet Activation: `http://localhost/activate-device`

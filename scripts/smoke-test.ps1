@@ -195,7 +195,7 @@ try {
 
   if ($WebBaseUrl) {
     Step "Web demo routes"
-    foreach ($route in @("/dashboard/executive", "/dashboard/factory", "/dashboard/capture", "/dashboard/hitl", "/dashboard/mlops")) {
+    foreach ($route in @("/dashboard/executive", "/dashboard/pilot", "/dashboard/factory", "/dashboard/capture", "/dashboard/hitl", "/dashboard/mlops")) {
       $statusCode = Test-WebRoute "$WebBaseUrl$route"
       if ($statusCode -ne 200) {
         Fail "$route returned $statusCode"

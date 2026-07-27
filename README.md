@@ -2,6 +2,8 @@
 
 Industrial AI Quality Control Platform
 
+[![KanbAI CI](https://github.com/zeynepbalkan2009-dot/KanbAI/actions/workflows/ci.yml/badge.svg)](https://github.com/zeynepbalkan2009-dot/KanbAI/actions/workflows/ci.yml)
+
 > Every inspection becomes training data.  
 > Every factory builds its own AI.
 

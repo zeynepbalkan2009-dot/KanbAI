@@ -28,6 +28,7 @@ The repository is ready for final review before commit and push. Docker runtime 
 | Web TypeScript | PASS |
 | Web production build | PASS |
 | Backend service image rebuild | PASS |
+| GitHub Actions CI workflow | READY |
 
 ## Git Hygiene
 
@@ -47,7 +48,7 @@ Excluded from Git:
 2. Add database migrations for production databases.
 3. Rotate demo secrets.
 4. Disable or restrict demo reset/seed endpoints.
-5. Add CI with web type-check/build and backend tests.
+5. Expand CI with API integration tests once a test database workflow is added.
 6. Add trusted HTTPS certificates for real tablets.
 
 ## Recommended Push
@@ -55,6 +56,6 @@ Excluded from Git:
 ```powershell
 git status --short
 git add .
-git commit -m "Prepare KanbAI factory pilot demo"
+git commit -m "Add KanbAI CI quality gate"
 git push -u origin main
 ```

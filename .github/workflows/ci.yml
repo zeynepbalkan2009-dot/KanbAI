@@ -1,0 +1,108 @@
+name: KanbAI CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  repository-hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure local runtime files are not tracked
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden="$(git ls-files \
+            '.env' \
+            'infra/nginx/certs/*.crt' \
+            'infra/nginx/certs/*.key' \
+            'mlops/registry/*.json' \
+            'outputs/*' \
+            'web/.next/*' \
+            'web/node_modules/*' || true)"
+
+          if [ -n "$forbidden" ]; then
+            echo "Forbidden runtime/generated files are tracked:"
+            echo "$forbidden"
+            exit 1
+          fi
+
+  backend-syntax:
+    name: Backend Python syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Parse backend and MLOps Python files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ast
+          import pathlib
+          import sys
+
+          roots = [pathlib.Path("backend"), pathlib.Path("mlops"), pathlib.Path("scripts")]
+          excluded_parts = {".venv", "venv", "__pycache__"}
+          failures = []
+          checked = 0
+
+          for root in roots:
+              if not root.exists():
+                  continue
+              for path in root.rglob("*.py"):
+                  if any(part in excluded_parts for part in path.parts):
+                      continue
+                  checked += 1
+                  try:
+                      ast.parse(path.read_text(encoding="utf-8"))
+                  except SyntaxError as exc:
+                      failures.append(f"{path}:{exc.lineno}:{exc.offset}: {exc.msg}")
+
+          if failures:
+              print("Python syntax failures:")
+              print("\n".join(failures))
+              sys.exit(1)
+
+          print(f"Parsed {checked} Python files successfully.")
+          PY
+
+  web:
+    name: Web type-check and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Build
+        run: npm run build

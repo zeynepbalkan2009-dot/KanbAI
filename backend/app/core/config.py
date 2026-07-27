@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import AnyUrl, field_validator
+import json
+
 from typing import Literal
 
 
@@ -14,20 +15,20 @@ class Settings(BaseSettings):
 
     # App
     app_env: Literal["development", "staging", "production"] = "development"
-    app_name: str = "QC Industrial Platform"
+    app_name: str = "KanbAI QC Platform"
     app_version: str = "0.1.0"
     debug: bool = False
 
     # Backend
     backend_port: int = 8000
-    allowed_origins: list[str] = ["http://localhost:3000"]
+    allowed_origins: str = "http://localhost:3000"
 
-    @field_validator("allowed_origins", mode="before")
-    @classmethod
-    def parse_origins(cls, v):
-        if isinstance(v, str):
-            return [o.strip() for o in v.split(",")]
-        return v
+    @property
+    def allowed_origins_list(self) -> list[str]:
+        raw = self.allowed_origins.strip()
+        if raw.startswith("["):
+            return [str(origin).strip() for origin in json.loads(raw)]
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
     # JWT
     jwt_secret_key: str

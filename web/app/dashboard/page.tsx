@@ -1,52 +1,92 @@
 "use client";
 
-import { useEffect } from "react";
+import Link from "next/link";
+import { useEffect, useMemo } from "react";
 import { useInspectionStore } from "@/lib/store/inspections";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell
+  Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { CheckCircle, XCircle, AlertTriangle, Clock, Zap } from "lucide-react";
+import {
+  AlertTriangle, ArrowRight, Building2, Camera, CheckCircle2, ClipboardCheck,
+  Clock3, Factory, Gauge, Search, ShieldAlert, Sparkles, Zap,
+} from "lucide-react";
 import { format } from "date-fns";
-import { tr } from "date-fns/locale";
 
-const DECISION_COLORS = {
-  pass: "#10b981",
-  fail: "#ef4444",
-  review: "#f59e0b",
-  pending: "#6b7280",
-  error: "#dc2626",
+const toneByDecision: Record<string, string> = {
+  pass: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+  fail: "border-red-500/25 bg-red-500/10 text-red-300",
+  review: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+  pending: "border-white/10 bg-white/5 text-white/45",
+  error: "border-red-500/25 bg-red-500/10 text-red-300",
 };
 
-function StatCard({
-  label, value, sub, icon: Icon, color,
+const labelByDecision: Record<string, string> = {
+  pass: "PASS",
+  fail: "FAIL",
+  review: "REVIEW",
+  pending: "PENDING",
+  error: "ERROR",
+};
+
+function MetricCard({
+  label,
+  value,
+  helper,
+  icon: Icon,
+  tone,
 }: {
-  label: string; value: string | number; sub?: string;
-  icon: React.ElementType; color: string;
+  label: string;
+  value: string | number;
+  helper: string;
+  icon: React.ElementType;
+  tone: string;
 }) {
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      <div className="flex items-start justify-between mb-3">
-        <p className="text-sm text-gray-400">{label}</p>
-        <div className={`p-2 rounded-lg ${color}`}>
-          <Icon size={16} />
+    <div className="rounded-xl border border-white/10 bg-[#0f131c] p-4 shadow-lg shadow-black/15">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium text-white/45">{label}</p>
+          <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+          <p className="mt-1 text-xs text-white/40">{helper}</p>
+        </div>
+        <div className={`rounded-lg p-2 ${tone}`}>
+          <Icon size={17} />
         </div>
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
-      {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
     </div>
   );
 }
 
 function DecisionBadge({ decision }: { decision: string }) {
-  const labels: Record<string, string> = {
-    pass: "GEÇTI", fail: "BAŞARISIZ", review: "İNCELEME",
-    pending: "BEKLIYOR", error: "HATA",
-  };
   return (
-    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full decision-${decision}`}>
-      {labels[decision] ?? decision.toUpperCase()}
+    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${toneByDecision[decision] ?? toneByDecision.pending}`}>
+      {labelByDecision[decision] ?? decision.toUpperCase()}
     </span>
+  );
+}
+
+function ActionLink({
+  href,
+  label,
+  detail,
+  icon: Icon,
+}: {
+  href: string;
+  label: string;
+  detail: string;
+  icon: React.ElementType;
+}) {
+  return (
+    <Link href={href} className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-[#00C2FF]/40 hover:bg-[#00C2FF]/10">
+      <div className="rounded-lg bg-white/5 p-2 text-[#00C2FF]">
+        <Icon size={17} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-white">{label}</p>
+        <p className="truncate text-xs text-white/40">{detail}</p>
+      </div>
+      <ArrowRight size={15} className="text-white/25 transition group-hover:text-[#00C2FF]" />
+    </Link>
   );
 }
 
@@ -56,177 +96,200 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchInspections();
     fetchStats();
-    const interval = setInterval(fetchStats, 30_000);
+    const interval = setInterval(() => {
+      fetchInspections();
+      fetchStats();
+    }, 30_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchInspections, fetchStats]);
 
-  // Pie chart data
-  const pieData = stats
-    ? [
-        { name: "Geçti", value: stats.pass_count, color: DECISION_COLORS.pass },
-        { name: "Başarısız", value: stats.fail_count, color: DECISION_COLORS.fail },
-        { name: "İnceleme", value: stats.review_count, color: DECISION_COLORS.review },
-      ].filter((d) => d.value > 0)
-    : [];
+  const latest = inspections.slice(0, 8);
+  const openReviewCount = stats?.review_count ?? 0;
+  const failCount = stats?.fail_count ?? 0;
+  const passRate = stats ? Math.round(stats.pass_rate * 100) : 0;
+  const avgConfidence = stats?.avg_confidence ? Math.round(stats.avg_confidence * 100) : 0;
 
-  // Area chart — last 20 inspections over time
-  const chartData = [...inspections]
-    .reverse()
-    .slice(-20)
-    .map((i) => ({
-      time: format(new Date(i.created_at), "HH:mm", { locale: tr }),
-      confidence: i.confidence ? Math.round(i.confidence * 100) : null,
-      pass: i.decision === "pass" ? 1 : 0,
-      fail: i.decision === "fail" ? 1 : 0,
-    }));
+  const chartData = useMemo(
+    () => [...inspections]
+      .reverse()
+      .slice(-20)
+      .map((item) => ({
+        time: format(new Date(item.created_at), "HH:mm"),
+        confidence: item.confidence ? Math.round(item.confidence * 100) : null,
+      })),
+    [inspections],
+  );
+
+  const pipeline = [
+    { label: "Captured", value: stats?.total ?? 0, icon: Camera, tone: "text-[#00C2FF]" },
+    { label: "AI processed", value: (stats?.pass_count ?? 0) + failCount + openReviewCount, icon: Sparkles, tone: "text-blue-300" },
+    { label: "Needs HITL", value: failCount + openReviewCount, icon: ClipboardCheck, tone: "text-amber-300" },
+    { label: "Closed pass", value: stats?.pass_count ?? 0, icon: CheckCircle2, tone: "text-emerald-300" },
+  ];
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-white">Dashboard</h1>
-        <p className="text-sm text-gray-400 mt-0.5">
-          Gerçek zamanlı kalite kontrol özeti
-        </p>
-      </div>
+    <div className="min-h-full bg-[#090B10] p-4 md:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <header className="rounded-2xl border border-white/10 bg-[#0f131c] p-5 shadow-xl shadow-black/20">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="rounded-xl border border-[#00C2FF]/25 bg-[#00C2FF]/10 p-3 text-[#00C2FF]">
+                <Factory size={24} />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-semibold text-white">Demo Fabrika A</h1>
+                  <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+                    Production demo
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-white/50">
+                  Industrial AI quality account workspace - inspections, HITL, dataset and model operations.
+                </p>
+              </div>
+            </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard
-          label="Toplam Muayene" value={stats?.total ?? 0}
-          sub="tüm zamanlar"
-          icon={Zap} color="bg-blue-900/40 text-blue-400"
-        />
-        <StatCard
-          label="Geçme Oranı"
-          value={stats ? `${Math.round(stats.pass_rate * 100)}%` : "—"}
-          sub={`${stats?.pass_count ?? 0} geçti`}
-          icon={CheckCircle} color="bg-emerald-900/40 text-emerald-400"
-        />
-        <StatCard
-          label="Hata Tespit"
-          value={stats?.fail_count ?? 0}
-          sub="manuel inceleme gerekebilir"
-          icon={XCircle} color="bg-red-900/40 text-red-400"
-        />
-        <StatCard
-          label="İnceleme Bekleyen"
-          value={stats?.review_count ?? 0}
-          sub="operatör onayı gerekli"
-          icon={AlertTriangle} color="bg-amber-900/40 text-amber-400"
-        />
-      </div>
+            <div className="flex flex-wrap gap-2">
+              <div className="flex min-w-[220px] items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/45">
+                <Search size={15} />
+                Search inspections, devices...
+              </div>
+              <Link href="/dashboard/capture" className="inline-flex items-center gap-2 rounded-lg bg-[#FF7A00] px-4 py-2 text-sm font-semibold text-black hover:bg-[#ff8c22]">
+                <Camera size={16} />
+                New inspection
+              </Link>
+            </div>
+          </div>
+        </header>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* Confidence over time */}
-        <div className="xl:col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-gray-300 mb-4">
-            Güven Skoru Trendi (son 20)
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="cGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-              <XAxis dataKey="time" tick={{ fill: "#6b7280", fontSize: 11 }} />
-              <YAxis domain={[0, 100]} tick={{ fill: "#6b7280", fontSize: 11 }}
-                tickFormatter={(v) => `${v}%`} />
-              <Tooltip
-                contentStyle={{ background: "#111827", border: "1px solid #374151", borderRadius: 8 }}
-                labelStyle={{ color: "#9ca3af" }}
-                formatter={(v: number) => [`${v}%`, "Güven"]}
-              />
-              <Area type="monotone" dataKey="confidence" stroke="#3b82f6"
-                strokeWidth={2} fill="url(#cGrad)" connectNulls />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard label="Inspections" value={stats?.total ?? 0} helper="All time production checks" icon={Zap} tone="bg-blue-500/10 text-blue-300" />
+          <MetricCard label="Pass rate" value={`${passRate}%`} helper={`${stats?.pass_count ?? 0} accepted parts`} icon={Gauge} tone="bg-emerald-500/10 text-emerald-300" />
+          <MetricCard label="Detected defects" value={failCount} helper="Requires traceability" icon={ShieldAlert} tone="bg-red-500/10 text-red-300" />
+          <MetricCard label="Open reviews" value={openReviewCount} helper="Quality team action needed" icon={AlertTriangle} tone="bg-amber-500/10 text-amber-300" />
         </div>
 
-        {/* Pie chart */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-gray-300 mb-4">Karar Dağılımı</h3>
-          {pieData.length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height={160}>
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={45}
-                    outerRadius={70} paddingAngle={3} dataKey="value">
-                    {pieData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: "#111827", border: "1px solid #374151", borderRadius: 8 }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-1.5 mt-2">
-                {pieData.map((d) => (
-                  <div key={d.name} className="flex items-center gap-2 text-xs text-gray-400">
-                    <div className="w-2 h-2 rounded-full" style={{ background: d.color }} />
-                    <span>{d.name}</span>
-                    <span className="ml-auto font-medium text-gray-200">{d.value}</span>
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-white">Factory quality trend</h2>
+                <p className="mt-1 text-xs text-white/40">Last 20 inspection confidence scores</p>
+              </div>
+              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/45">
+                Avg {avgConfidence || "--"}%
+              </span>
+            </div>
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="confidenceGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00C2FF" stopOpacity={0.28} />
+                    <stop offset="95%" stopColor="#00C2FF" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1c2430" />
+                <XAxis dataKey="time" tick={{ fill: "#667085", fontSize: 11 }} />
+                <YAxis domain={[0, 100]} tick={{ fill: "#667085", fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip
+                  contentStyle={{ background: "#111827", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10 }}
+                  labelStyle={{ color: "#cbd5e1" }}
+                  formatter={(value: number) => [`${value}%`, "Confidence"]}
+                />
+                <Area type="monotone" dataKey="confidence" stroke="#00C2FF" strokeWidth={2} fill="url(#confidenceGradient)" connectNulls />
+              </AreaChart>
+            </ResponsiveContainer>
+          </section>
+
+          <aside className="space-y-4">
+            <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-4">
+              <h2 className="mb-3 text-sm font-semibold text-white">Quick actions</h2>
+              <div className="space-y-2">
+                <ActionLink href="/dashboard/capture" label="Operator capture" detail="Tablet camera / demo camera" icon={Camera} />
+                <ActionLink href="/dashboard/hitl" label="Review queue" detail={`${failCount + openReviewCount} items need attention`} icon={ClipboardCheck} />
+                <ActionLink href="/dashboard/mlops" label="Learning cycle" detail="Dataset, retrain, model registry" icon={Sparkles} />
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-4">
+              <h2 className="mb-3 text-sm font-semibold text-white">Account status</h2>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between text-white/60">
+                  <span className="inline-flex items-center gap-2"><Building2 size={15} /> Factory</span>
+                  <span className="font-medium text-white">Demo Fabrika A</span>
+                </div>
+                <div className="flex items-center justify-between text-white/60">
+                  <span className="inline-flex items-center gap-2"><Clock3 size={15} /> Shift</span>
+                  <span className="font-medium text-white">Gunduz</span>
+                </div>
+                <div className="flex items-center justify-between text-white/60">
+                  <span className="inline-flex items-center gap-2"><Sparkles size={15} /> Model</span>
+                  <span className="font-medium text-white">mock-v1.0-demo</span>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+          <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-white">Inspection pipeline</h2>
+              <span className="text-xs text-white/35">Today</span>
+            </div>
+            <div className="space-y-3">
+              {pipeline.map(({ label, value, icon: Icon, tone }, index) => (
+                <div key={label} className="flex items-center gap-3">
+                  <div className={`rounded-lg bg-white/5 p-2 ${tone}`}>
+                    <Icon size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-white">{label}</p>
+                      <p className="text-sm font-semibold text-white">{value}</p>
+                    </div>
+                    <div className="mt-2 h-1.5 rounded-full bg-white/5">
+                      <div className="h-1.5 rounded-full bg-[#00C2FF]" style={{ width: `${Math.max(8, 100 - index * 18)}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0f131c]">
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <div>
+                <h2 className="text-sm font-semibold text-white">Recent activity</h2>
+                <p className="mt-1 text-xs text-white/40">Latest inspections and AI decisions</p>
+              </div>
+              <Link href="/dashboard/inspections" className="text-xs font-medium text-[#00C2FF] hover:text-white">
+                View all
+              </Link>
+            </div>
+
+            {isLoading && latest.length === 0 ? (
+              <div className="p-8 text-center text-sm text-white/40">Loading activity...</div>
+            ) : latest.length === 0 ? (
+              <div className="p-8 text-center text-sm text-white/40">No inspections yet.</div>
+            ) : (
+              <div className="divide-y divide-white/10">
+                {latest.map((item) => (
+                  <div key={item.id} className="grid grid-cols-[130px_minmax(0,1fr)_90px_90px_72px] items-center gap-3 px-5 py-3 text-sm hover:bg-white/[0.03]">
+                    <DecisionBadge decision={item.decision} />
+                    <div className="min-w-0">
+                      <p className="truncate font-mono text-xs text-white/70">{item.id}</p>
+                      <p className="mt-1 truncate text-xs text-white/35">{item.defects?.[0]?.class_name ?? "no defect label"}</p>
+                    </div>
+                    <p className="text-xs text-white/55">{item.confidence ? `${Math.round(item.confidence * 100)}%` : "--"}</p>
+                    <p className="text-xs text-white/35">{item.inference_latency_ms ? `${item.inference_latency_ms}ms` : "--"}</p>
+                    <p className="text-right text-xs text-white/35">{format(new Date(item.created_at), "HH:mm")}</p>
                   </div>
                 ))}
               </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-center h-[200px] text-gray-600 text-sm">
-              Henüz veri yok
-            </div>
-          )}
+            )}
+          </section>
         </div>
-      </div>
-
-      {/* Live inspection feed */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl">
-        <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-300">
-            Son Muayeneler
-          </h3>
-          <div className="flex items-center gap-1.5 text-xs text-emerald-400">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Canlı
-          </div>
-        </div>
-
-        {isLoading && inspections.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 text-sm">Yükleniyor...</div>
-        ) : inspections.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 text-sm">
-            Henüz muayene kaydı yok
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-800">
-            {inspections.slice(0, 15).map((insp) => (
-              <div key={insp.id}
-                className="px-5 py-3 flex items-center gap-4 hover:bg-gray-800/50 transition">
-                <DecisionBadge decision={insp.decision} />
-                <span className="text-xs text-gray-400 font-mono truncate flex-1">
-                  {insp.id.split("-")[0]}...
-                </span>
-                {insp.confidence != null && (
-                  <span className="text-xs text-gray-500">
-                    {Math.round(insp.confidence * 100)}%
-                  </span>
-                )}
-                {insp.inference_latency_ms != null && (
-                  <span className="text-xs text-gray-600">
-                    {insp.inference_latency_ms}ms
-                  </span>
-                )}
-                <span className="text-xs text-gray-600">
-                  {format(new Date(insp.created_at), "HH:mm:ss")}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

@@ -1,0 +1,33 @@
+{
+  "name": "KanbAI Factory Quality CRM",
+  "short_name": "KanbAI",
+  "description": "Industrial AI quality control with continuous learning and human-in-the-loop validation.",
+  "start_url": "/dashboard/capture",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#090B10",
+  "theme_color": "#090B10",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Capture Inspection",
+      "short_name": "Capture",
+      "url": "/dashboard/capture",
+      "description": "Open the operator capture workflow."
+    },
+    {
+      "name": "Review Queue",
+      "short_name": "HITL",
+      "url": "/dashboard/hitl",
+      "description": "Open human-in-the-loop quality review."
+    }
+  ]
+}

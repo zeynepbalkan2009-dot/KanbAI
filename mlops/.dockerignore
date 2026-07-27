@@ -1,0 +1,14 @@
+﻿__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.venv
+venv
+.env
+*.log
+runs
+artifacts
+dataset/raw
+dataset/processed
+dataset/versions
+dataset/yolo

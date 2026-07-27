@@ -1,7 +1,11 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, Query, UploadFile
+from fastapi.responses import StreamingResponse
+import csv
+import io
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.auth.service import get_current_user, CurrentUser
@@ -24,6 +28,14 @@ def _svc(
 async def create_inspection(
     device_id: str = Form(...),
     file: UploadFile = File(...),
+    production_line_id: Optional[str] = Form(None),
+    station_id: Optional[str] = Form(None),
+    product_id: Optional[str] = Form(None),
+    shift_id: Optional[str] = Form(None),
+    serial_number: Optional[str] = Form(None),
+    lot_number: Optional[str] = Form(None),
+    captured_at: Optional[datetime] = Form(None),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     svc: InspectionService = Depends(_svc),
 ):
     """Upload image and queue AI inspection."""
@@ -33,6 +45,14 @@ async def create_inspection(
         image_data=data,
         content_type=file.content_type or "image/jpeg",
         filename=file.filename or "upload.jpg",
+        production_line_id=production_line_id,
+        station_id=station_id,
+        product_id=product_id,
+        shift_id=shift_id,
+        serial_number=serial_number,
+        lot_number=lot_number,
+        captured_at=captured_at,
+        idempotency_key=idempotency_key,
     )
     return {
         "inspection_id": str(inspection.id),
@@ -61,6 +81,22 @@ async def list_inspections(
 @router.get("/stats", response_model=InspectionStats)
 async def get_stats(svc: InspectionService = Depends(_svc)):
     return await svc.get_stats()
+
+
+@router.get("/export.csv")
+async def export_inspections_csv(
+    decision: Optional[str] = Query(None),
+    limit: int = Query(1000, le=5000),
+    svc: InspectionService = Depends(_svc),
+):
+    inspections = await svc.list_inspections(decision=decision, limit=limit, offset=0)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["inspection_id", "device_id", "decision", "confidence", "operator_decision", "serial_number", "lot_number", "created_at"])
+    for item in inspections:
+        writer.writerow([item.id, item.device_id, item.decision, item.confidence, item.operator_decision, item.serial_number, item.lot_number, item.created_at])
+    output.seek(0)
+    return StreamingResponse(iter([output.getvalue()]), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=kanbai-inspections.csv"})
 
 
 @router.get("/{inspection_id}", response_model=InspectionOut)

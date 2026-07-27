@@ -45,6 +45,7 @@ Thumbs.db
 *.log
 logs/
 *.out
+backend/celerybeat-schedule
 
 # Models and generated ML artifacts
 backend/models/*.pt
@@ -52,6 +53,7 @@ backend/models/*.onnx
 backend/models/*.engine
 mlops/**/runs/
 mlops/**/artifacts/
+mlops/registry/*.json
 mlops/dataset/raw/
 mlops/dataset/processed/
 mlops/dataset/versions/
@@ -59,3 +61,12 @@ mlops/dataset/yolo/
 
 # Alembic generated revisions for demo package
 backend/alembic/versions/*.py
+
+# Generated delivery packages
+outputs/
+
+# Local HTTPS demo certificates
+infra/nginx/certs/*.crt
+infra/nginx/certs/*.key
+infra/nginx/certs/*.cnf
+!infra/nginx/certs/.gitkeep

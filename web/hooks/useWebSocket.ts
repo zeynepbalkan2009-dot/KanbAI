@@ -3,7 +3,12 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { tokenStore } from "@/lib/api";
 
-const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+function getWebSocketBase() {
+  if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
+  if (typeof window === "undefined") return "ws://localhost:8000";
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}`;
+}
 
 export type WSEventType =
   | "connection.established"
@@ -51,7 +56,12 @@ export function useWebSocket({
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
   const reconnectCount = useRef(0);
   const isMounted = useRef(true);
+  const onEventRef = useRef(onEvent);
   const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   const connect = useCallback(() => {
     if (!enabled || !tenantId || !isMounted.current) return;
@@ -59,12 +69,14 @@ export function useWebSocket({
     const token = tokenStore.getAccess();
     if (!token) return;
 
-    const url = `${WS_BASE}/ws/${tenantId}?token=${encodeURIComponent(token)}`;
+    wsRef.current?.close(1000, "reconnecting");
+    const url = `${getWebSocketBase()}/ws/${tenantId}?token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
     ws.onopen = () => {
       if (!isMounted.current) return;
+      if (wsRef.current !== ws) return;
       reconnectCount.current = 0;
       setConnected(true);
       console.debug("[WS] connected", tenantId);
@@ -72,9 +84,10 @@ export function useWebSocket({
 
     ws.onmessage = (e) => {
       if (!isMounted.current) return;
+      if (wsRef.current !== ws) return;
       try {
         const event: WSEvent = JSON.parse(e.data);
-        onEvent?.(event);
+        onEventRef.current?.(event);
       } catch {
         // non-JSON (pong) — ignore
       }
@@ -86,6 +99,7 @@ export function useWebSocket({
 
     ws.onclose = (e) => {
       if (!isMounted.current) return;
+      if (wsRef.current !== ws) return;
       setConnected(false);
       console.debug("[WS] disconnected", e.code, e.reason);
 
@@ -100,7 +114,7 @@ export function useWebSocket({
       reconnectCount.current++;
       reconnectTimer.current = setTimeout(connect, delay);
     };
-  }, [tenantId, enabled, onEvent]);
+  }, [tenantId, enabled]);
 
   // Keepalive ping every 25s
   useEffect(() => {

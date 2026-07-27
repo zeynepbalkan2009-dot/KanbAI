@@ -31,6 +31,13 @@ class InspectionOut(BaseModel):
     operator_decision: Optional[str]
     inference_latency_ms: Optional[int]
     celery_task_id: Optional[str]
+    production_line_id: Optional[uuid.UUID] = None
+    station_id: Optional[uuid.UUID] = None
+    product_id: Optional[uuid.UUID] = None
+    shift_id: Optional[uuid.UUID] = None
+    serial_number: Optional[str] = None
+    lot_number: Optional[str] = None
+    captured_at: Optional[datetime] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -66,6 +73,14 @@ class InspectionService:
         image_data: bytes,
         content_type: str,
         filename: str,
+        production_line_id: Optional[str] = None,
+        station_id: Optional[str] = None,
+        product_id: Optional[str] = None,
+        shift_id: Optional[str] = None,
+        serial_number: Optional[str] = None,
+        lot_number: Optional[str] = None,
+        captured_at: Optional[datetime] = None,
+        idempotency_key: Optional[str] = None,
     ) -> tuple[InspectionResult, str]:
         """
         Upload image → create pending inspection → queue Celery task.
@@ -73,6 +88,18 @@ class InspectionService:
         """
         # Validate device belongs to this tenant
         device = await self._get_device(device_id)
+
+        if idempotency_key:
+            existing = await self.db.execute(
+                select(InspectionResult).where(
+                    InspectionResult.factory_id == self.tenant_uuid,
+                    InspectionResult.idempotency_key == idempotency_key,
+                    InspectionResult.deleted_at.is_(None),
+                )
+            )
+            existing_inspection = existing.scalar_one_or_none()
+            if existing_inspection:
+                return existing_inspection, existing_inspection.celery_task_id or "already-queued"
 
         # Validate image
         validate_image(image_data, content_type)
@@ -94,6 +121,16 @@ class InspectionService:
             image_key=image_key,
             image_path=image_path,
             decision="pending",
+            inference_status="queued",
+            production_line_id=uuid.UUID(production_line_id) if production_line_id else None,
+            station_id=uuid.UUID(station_id) if station_id else getattr(device, "station_id", None),
+            product_id=uuid.UUID(product_id) if product_id else None,
+            shift_id=uuid.UUID(shift_id) if shift_id else None,
+            serial_number=serial_number,
+            lot_number=lot_number,
+            captured_at=captured_at,
+            idempotency_key=idempotency_key,
+            thumbnail_key=image_key,
         )
         self.db.add(inspection)
         await self.db.flush()

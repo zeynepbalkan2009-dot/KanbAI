@@ -24,6 +24,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from pydantic import BaseModel
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.auth.service import get_current_user, CurrentUser, require_role
@@ -77,6 +78,8 @@ async def list_models(
         registry = ModelRegistry()
         stage_filter = ModelStage(stage) if stage else None
         versions = registry.list_versions(name=name, stage=stage_filter)
+        if not versions:
+            return _mock_model_list()
         return [v.to_dict() for v in versions]
     except Exception as e:
         logger.warning("model_registry_unavailable", error=str(e))
@@ -298,10 +301,118 @@ async def get_dataset_stats(current: CurrentUser = Depends(get_current_user)):
 
 # ── Demo seeder endpoint ──────────────────────────────────────────────────────
 
+async def _table_exists(db: AsyncSession, table_name: str) -> bool:
+    result = await db.execute(text("SELECT to_regclass(:table_name)"), {"table_name": f"public.{table_name}"})
+    return result.scalar_one_or_none() is not None
+
+
+async def _delete_demo_records(db: AsyncSession, factory_id: str) -> dict[str, int]:
+    demo_filter = """
+        factory_id = :factory_id
+        AND (
+            image_key LIKE 'demo/%'
+            OR celery_task_id LIKE 'demo-%'
+            OR serial_number LIKE 'KANBAI-DEMO%'
+            OR lot_number LIKE 'FACTORY-PILOT%'
+        )
+    """
+    demo_filter_ir = """
+        ir.factory_id = :factory_id
+        AND (
+            ir.image_key LIKE 'demo/%'
+            OR ir.celery_task_id LIKE 'demo-%'
+            OR ir.serial_number LIKE 'KANBAI-DEMO%'
+            OR ir.lot_number LIKE 'FACTORY-PILOT%'
+        )
+    """
+    deleted: dict[str, int] = {}
+
+    async def delete_optional(table: str, sql: str) -> None:
+        if not await _table_exists(db, table):
+            deleted[table] = 0
+            return
+        result = await db.execute(text(sql), {"factory_id": factory_id})
+        deleted[table] = max(result.rowcount or 0, 0)
+
+    await delete_optional("review_annotations", f"""
+        DELETE FROM review_annotations
+        WHERE review_id IN (
+            SELECT rq.id
+            FROM review_queue rq
+            JOIN inspection_results ir ON ir.id = rq.inspection_id
+            WHERE {demo_filter_ir}
+        )
+    """)
+
+    await delete_optional("dataset_contributions", f"""
+        DELETE FROM dataset_contributions
+        WHERE factory_id = :factory_id
+          AND inspection_id IN (
+            SELECT id FROM inspection_results WHERE {demo_filter}
+          )
+    """)
+
+    await delete_optional("false_positive_log", f"""
+        DELETE FROM false_positive_log
+        WHERE factory_id = :factory_id
+          AND inspection_id IN (
+            SELECT id FROM inspection_results WHERE {demo_filter}
+          )
+    """)
+
+    await delete_optional("hitl_reviews", f"""
+        DELETE FROM hitl_reviews
+        WHERE factory_id = :factory_id
+          AND inspection_id IN (
+            SELECT id FROM inspection_results WHERE {demo_filter}
+          )
+    """)
+
+    await delete_optional("inspection_defects", f"""
+        DELETE FROM inspection_defects
+        WHERE factory_id = :factory_id
+          AND inspection_id IN (
+            SELECT id FROM inspection_results WHERE {demo_filter}
+          )
+    """)
+
+    await delete_optional("review_queue", f"""
+        DELETE FROM review_queue
+        WHERE factory_id = :factory_id
+          AND inspection_id IN (
+            SELECT id FROM inspection_results WHERE {demo_filter}
+          )
+    """)
+
+    result = await db.execute(text(f"""
+        DELETE FROM inspection_results
+        WHERE {demo_filter}
+    """), {"factory_id": factory_id})
+    deleted["inspection_results"] = max(result.rowcount or 0, 0)
+    return deleted
+
+
+@router.post("/demo/reset")
+async def reset_demo_data(
+    current: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete only demo-tagged records for the current factory tenant."""
+    try:
+        deleted = await _delete_demo_records(db, current.tenant_id)
+        await db.commit()
+        logger.info("demo_reset", deleted=deleted, factory_id=current.tenant_id)
+        return {"reset": True, "deleted": deleted}
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(500, str(e))
+
+
 @router.post("/demo/seed")
 async def seed_demo_data(
     scenario: str = Query("metal", enum=["metal", "cnc", "plastic"]),
     count: int = Query(50, le=500),
+    reset: bool = Query(False),
     background_tasks: BackgroundTasks = None,
     current: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
@@ -311,11 +422,12 @@ async def seed_demo_data(
     Creates N inspection records with realistic AI results.
     """
     try:
-        from sqlalchemy import text
         import sys
         from pathlib import Path
         sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
         from mlops.demo.demo_scenarios import ALL_FACTORIES, DemoEventGenerator
+
+        deleted = await _delete_demo_records(db, current.tenant_id) if reset else {}
 
         factory_meta = ALL_FACTORIES.get(scenario)
         if not factory_meta:
@@ -338,11 +450,11 @@ async def seed_demo_data(
             await db.execute(text("""
                 INSERT INTO inspection_results
                     (id, factory_id, device_id, image_key, image_path,
-                     decision, confidence, defects, inference_latency_ms,
+                     decision, inference_status, confidence, defects, inference_latency_ms,
                      celery_task_id, created_at, updated_at)
                 VALUES
                     (:id, :factory_id, :device_id, :image_key, :image_path,
-                     :decision, :confidence, :defects::jsonb, :latency,
+                     :decision, 'completed', :confidence, CAST(:defects AS jsonb), :latency,
                      :task_id, NOW() - (:offset_seconds * INTERVAL '1 second'), NOW())
             """), {
                 "id":         insp_id,
@@ -364,6 +476,8 @@ async def seed_demo_data(
             "seeded":   inserted,
             "scenario": scenario,
             "factory":  factory_meta.name,
+            "reset":    reset,
+            "deleted":  deleted,
         }
     except Exception as e:
         raise HTTPException(500, str(e))

@@ -1,43 +1,64 @@
 # GitHub Upload Guide
 
-## Recommended repo name
+Repository:
 
-`kanba-qc-platform`
-
-## Before upload
-
-Do not commit `.env`. This repo includes `.env.example`; local users should run:
-
-```bash
-cp .env.example .env
+```text
+https://github.com/zeynepbalkan2009-dot/KanbAI.git
 ```
 
-## First-time GitHub push
+## Before Commit
 
-```bash
-git init
+Do not commit local runtime files:
+
+- `.env`
+- local HTTPS cert/key files under `infra/nginx/certs/`
+- generated model registry JSON files under `mlops/registry/`
+- `outputs/`
+- `node_modules/`
+- `.next/`
+- Docker volume data
+
+The current `.gitignore` excludes these.
+
+## Validation Before Push
+
+Run:
+
+```powershell
+cd D:\kanba-qc-platform\qc-platform
+.\scripts\smoke-test.ps1 -ApiBaseUrl 'http://localhost:8000' -WebBaseUrl 'https://localhost' -AllowSelfSigned -SeedCount 8
+cd web
+.\node_modules\.bin\tsc.cmd --noEmit --incremental false
+npm run build
+```
+
+## Commit And Push
+
+```powershell
+git status --short
 git add .
-git commit -m "Initial Kanba QC Platform demo"
+git commit -m "Prepare KanbAI factory pilot demo"
 git branch -M main
-git remote add origin https://github.com/<USERNAME>/kanba-qc-platform.git
+git remote set-url origin https://github.com/zeynepbalkan2009-dot/KanbAI.git
 git push -u origin main
 ```
 
-## After clone
+## Demo After Clone
 
-```bash
-git clone https://github.com/<USERNAME>/kanba-qc-platform.git
-cd kanba-qc-platform
-cp .env.example .env
-bash scripts/start.sh
+```powershell
+copy .env.example .env
+.\scripts\start-pilot-https.ps1 -PrimeDemo
 ```
 
-## Useful checks
+Open:
 
-```bash
-docker compose ps
-docker compose logs -f api
-docker compose logs -f celery-beat
-docker compose logs -f worker-general
+```text
+https://localhost/dashboard/executive
 ```
 
+Login:
+
+```text
+admin@demo.com
+Admin123!
+```

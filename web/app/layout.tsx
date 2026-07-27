@@ -1,14 +1,22 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { QueryProvider } from "@/components/providers/QueryProvider";
-
-const inter = Inter({ subsets: ["latin"] });
+import { PWARegister } from "@/components/PWARegister";
 
 export const metadata: Metadata = {
-  title: "QC Industrial Platform",
-  description: "AI-powered quality control for industrial manufacturing",
+  title: "KanbAI",
+  description: "Industrial AI quality control with continuous learning",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "KanbAI",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#090B10",
 };
 
 export default function RootLayout({
@@ -18,8 +26,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="tr">
-      <body className={`${inter.className} bg-gray-950 text-gray-100 antialiased`}>
+      <body className="bg-gray-950 text-gray-100 antialiased">
         <QueryProvider>
+          <PWARegister />
           {children}
           <Toaster
             position="top-right"

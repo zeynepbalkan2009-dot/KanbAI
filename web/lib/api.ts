@@ -5,7 +5,8 @@ import axios, {
 } from "axios";
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
 
 // ── Token storage ─────────────────────────────────────────────────────────────
 const TOKEN_KEY = "qc_access_token";
@@ -132,10 +133,21 @@ export const inspectionsApi = {
   }) => api.get("/inspections", { params }),
   get: (id: string) => api.get(`/inspections/${id}`),
   stats: () => api.get("/inspections/stats"),
-  upload: (deviceId: string, file: File) => {
+  upload: (deviceId: string, file: File, metadata?: {
+    serial_number?: string;
+    lot_number?: string;
+    captured_at?: string;
+    station_id?: string;
+    product_id?: string;
+    production_line_id?: string;
+    shift_id?: string;
+  }) => {
     const form = new FormData();
     form.append("device_id", deviceId);
     form.append("file", file);
+    Object.entries(metadata ?? {}).forEach(([key, value]) => {
+      if (value) form.append(key, value);
+    });
     return api.post("/inspections", form, {
       headers: { "Content-Type": "multipart/form-data" },
     });
@@ -146,7 +158,33 @@ export const inspectionsApi = {
 
 export const devicesApi = {
   list: () => api.get("/devices"),
-  register: (data: { device_uuid: string; name: string; location_label?: string }) =>
+  register: (data: { device_uuid: string; name: string; location_label?: string; station_id?: string }) =>
     api.post("/devices", data),
+  createActivationToken: (data: { station_id?: string; label?: string; expires_in_hours?: number }) =>
+    api.post("/devices/activation-token", data),
+  activate: (data: {
+    activation_token: string;
+    device_uuid: string;
+    name: string;
+    firmware_version?: string;
+    location_label?: string;
+  }) => api.post("/devices/activate", data),
   heartbeat: (id: string) => api.patch(`/devices/${id}/heartbeat`, {}),
+  revoke: (id: string) => api.post(`/devices/${id}/revoke`),
+};
+
+export const setupApi = {
+  stations: (params?: { active_only?: boolean }) => api.get("/stations", { params }),
+  productionLines: (params?: { active_only?: boolean }) => api.get("/production-lines", { params }),
+};
+
+export const hitlApi = {
+  queue: () => api.get("/hitl/queue"),
+  stats: () => api.get("/hitl/stats"),
+  review: (id: string, data: {
+    decision: "pass" | "fail" | "wrong_prediction" | "needs_retrain";
+    corrected_label?: string;
+    notes?: string;
+    dataset_contribution?: boolean;
+  }) => api.post(`/hitl/${id}/review`, data),
 };

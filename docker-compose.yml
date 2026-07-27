@@ -110,8 +110,11 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: development
+      args:
+        REQUIREMENTS_FILE: requirements-demo.txt
     container_name: qc_api
     restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level info
     <<: *backend-env
     ports:
       - "8000:8000"
@@ -141,6 +144,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: development
+      args:
+        REQUIREMENTS_FILE: requirements-demo.txt
     container_name: qc_worker_inference
     restart: unless-stopped
     command: >
@@ -167,6 +172,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: development
+      args:
+        REQUIREMENTS_FILE: requirements-demo.txt
     container_name: qc_worker_general
     restart: unless-stopped
     command: >
@@ -193,6 +200,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: development
+      args:
+        REQUIREMENTS_FILE: requirements-demo.txt
     container_name: qc_celery_beat
     restart: unless-stopped
     command: >
@@ -215,17 +224,13 @@ services:
     image: python:3.11-slim
     container_name: qc_mlflow
     restart: unless-stopped
-    command: >
-      bash -c "pip install mlflow psycopg2-binary -q &&
-               mlflow server
-               --backend-store-uri postgresql://${POSTGRES_USER:-qcuser}:${POSTGRES_PASSWORD:-qcpassword123}@postgres:5432/${POSTGRES_DB:-qcplatform}
-               --default-artifact-root s3://models/mlflow
-               --host 0.0.0.0
-               --port 5000"
+    command: python /mlops/demo_mlops_server.py
     environment:
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
       - AWS_ACCESS_KEY_ID=${MINIO_ACCESS_KEY:-minioadmin}
       - AWS_SECRET_ACCESS_KEY=${MINIO_SECRET_KEY:-minioadmin123}
+    volumes:
+      - ./mlops:/mlops:ro
     ports:
       - "5000:5000"
     depends_on:
@@ -242,6 +247,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: development
+      args:
+        REQUIREMENTS_FILE: requirements-demo.txt
     container_name: qc_flower
     restart: unless-stopped
     command: >
@@ -265,9 +272,6 @@ services:
     container_name: qc_web
     restart: unless-stopped
     env_file: .env
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
-      NEXT_PUBLIC_WS_URL: ws://localhost:8000
     ports:
       - "3000:3000"
     volumes:

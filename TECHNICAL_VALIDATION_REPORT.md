@@ -1,139 +1,131 @@
-# Technical Validation Report
+# KanbAI Technical Validation Report
 
-Date: 2026-07-04
-Target: ITU Cekirdek BIGG demo readiness for `D:\kanba-qc-platform\qc-platform`
+Date: 2026-07-27  
+Project: `D:\kanba-qc-platform\qc-platform`  
+Target: Factory-ready, production-like demo for KanbAI Industrial AI Quality Control Platform
 
 ## Executive Summary
 
-The project was analyzed across backend, web, Docker Compose, database seed flow, storage, inference, Celery, and MLOps demo paths. Several first-run blockers were fixed directly in the project.
+KanbAI is now running as a Docker Compose based factory demo with Backend, Web, PostgreSQL, Redis, MinIO, Celery workers, Flower, Nginx and the lightweight MLOps registry online. The demo was extended from a static/pitch surface into a more realistic factory pilot workspace: operator capture, device activation, inspection records, HITL review, continuous learning, investor view and a new Factory Digital Twin overview.
 
-Full Docker/E2E validation could not be completed on this machine because Docker is not installed or not available in PATH. The command `docker compose up --build` fails with `docker : The term 'docker' is not recognized`.
+The current build is suitable for ITU Cekirdek / TUBITAK BIGG / investor demo sessions and controlled factory trials. It is still a demo deployment, not a hardened production installation.
 
-## Applied Fixes
+## Current Runtime Status
 
-1. Created demo `.env`
-   - Added `.env` from `.env.example`.
-   - Normalized `AI_INFERENCE_MODE=mock` so settings parsing is deterministic.
-
-2. Fixed PostgreSQL first boot failure
-   - `scripts/init_db.sql` now only creates database extensions.
-   - Removed seed inserts from Postgres init because those ran before FastAPI created application tables.
-
-3. Added backend startup demo seed
-   - `backend/app/main.py` now seeds the baseline demo factory, admin user, operator user, demo device, mock AI model, and active model deployment after `Base.metadata.create_all()`.
-   - Seed is idempotent via `ON CONFLICT DO NOTHING`.
-
-4. Fixed web Docker build blocker
-   - `web/Dockerfile` now uses `npm ci` when a lockfile exists and falls back to `npm install` when it does not.
-   - Generated `web/package-lock.json` by running `npm install`.
-
-5. Fixed Next.js production build configuration
-   - `web/next.config.js` now defaults API rewrites to `http://localhost:8000` when `NEXT_PUBLIC_API_URL` is absent.
-
-6. Fixed MinIO readiness ordering
-   - `docker-compose.yml` now makes `api` wait for `minio-init` to complete successfully, preventing uploads before required buckets exist.
-
-7. Hardened backend UUID and stats handling
-   - `backend/app/domains/inspection/service.py` now compares UUID columns with UUID values and uses portable `CASE` expressions for dashboard stats.
-   - Review updates now refresh the returned inspection object.
-   - `backend/app/api/v1/devices_router.py` now uses UUID values for list and heartbeat filters.
-
-## Validation Performed
-
-### Static / Build Checks
-
-| Area | Result | Notes |
+| Component | Status | Evidence |
 |---|---:|---|
-| Backend Python AST parse | PASS | 57 Python files parsed successfully with zero syntax errors. |
-| Web dependency install | PASS | `npm install` completed and generated lockfile. |
-| Web TypeScript check | PASS | `npm run type-check` completed successfully. |
-| Web production build | PASS | `npm run build` completed successfully. |
-| Docker Compose runtime | BLOCKED | Docker CLI is unavailable on this machine. |
-| Backend local import/runtime | BLOCKED | Local Python environment lacks backend dependencies such as SQLAlchemy; Docker would normally provide these. |
+| PostgreSQL | PASS | Container healthy |
+| Redis | PASS | Container healthy |
+| MinIO | PASS | Container healthy, `/ready` dependency check OK |
+| Backend API | PASS | `GET /ready` returns `200` with PostgreSQL, Redis and MinIO OK |
+| Web | PASS | Next.js app running behind Nginx |
+| Nginx | PASS | Ports `80` and `443` active; HTTPS local pilot mode enabled |
+| Celery inference worker | PASS | Container running |
+| Celery general worker | PASS | Container running |
+| Celery Beat | PASS | Container running |
+| Flower | PASS | Port `5555` exposed |
+| MLOps registry | PASS | Lightweight demo registry running on port `5000` |
 
-### Demo Flow Coverage By Code Review
+## Latest Validation Commands
 
-| Scenario Step | Status | Evidence |
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.https.yml ps
+python -c "import ssl,urllib.request; ctx=ssl._create_unverified_context(); r=urllib.request.urlopen('https://127.0.0.1/ready', context=ctx, timeout=20); print(r.status); print(r.read().decode())"
+cd web
+.\node_modules\.bin\tsc.cmd --noEmit --incremental false
+npm run build
+.\scripts\prime-demo.ps1 -ApiBaseUrl 'http://localhost:8000' -WebBaseUrl 'https://localhost' -AllowSelfSigned -Count 8
+.\scripts\smoke-test.ps1 -ApiBaseUrl 'http://localhost:8000' -WebBaseUrl 'https://localhost' -AllowSelfSigned -SeedCount 8
+```
+
+## Validation Results
+
+| Check | Result | Notes |
 |---|---:|---|
-| Admin login | READY BY CODE | Startup seed creates `admin@demo.com / Admin123!`; auth route exists at `/api/v1/auth/login`. |
-| Device activation/listing | READY BY CODE | Startup seed creates `DEVICE-DEMO-001`; device list and heartbeat endpoints are present. |
-| Photo upload | READY BY CODE | `/api/v1/inspections` uploads to MinIO and queues Celery inference. |
-| AI inference | READY BY CODE | Default `AI_INFERENCE_MODE=mock`; Celery task updates inspection decision/confidence/defects. |
-| Dashboard update | READY BY CODE | Dashboard reads `/inspections/stats` and list endpoints; WebSocket path exists for live events. |
-| HITL queue | PARTIAL | MLOps page calls HITL endpoints; router has graceful mock fallback if pipeline storage is unavailable. |
-| Demo seed | READY BY CODE | `/api/v1/mlops/demo/seed?scenario=metal&count=...` inserts realistic inspection history. |
+| API readiness | PASS | `{"status":"ok","dependencies":{"postgresql":"ok","redis":"ok","minio":"ok"}}` |
+| Admin login | PASS | `admin@demo.com / Admin123!` returns bearer token |
+| Demo reset + seed | PASS | 8 metal inspection records seeded after reset |
+| Web TypeScript | PASS | `tsc --noEmit --incremental false` |
+| Web production build | PASS | Next build compiled and generated 14 app routes |
+| HTTPS executive route | PASS | `/dashboard/executive` returns 200 |
+| HTTPS factory overview route | PASS | `/dashboard/factory` returns 200 |
+| HTTPS capture route | PASS | `/dashboard/capture` returns 200 |
+| HTTPS HITL route | PASS | `/dashboard/hitl` returns 200 |
+| HTTPS MLOps route | PASS | `/dashboard/mlops` returns 200 |
+| Factory acceptance smoke | PASS | Readiness, login, seed, activation, photo upload, AI inference, stats, HITL, MLOps, CSV export and HTTPS web routes passed |
+| Backend image rebuild | PASS | API/worker/beat/flower images rebuilt with `bcrypt==4.1.3` baked in |
+| API runtime mode | PASS | API now runs without `--reload` in Compose for stable demo behavior |
 
-## Service Readiness Assessment
+## Completed Product Improvements
 
-| Service | Status | Notes |
+- Added `Factory Overview` digital twin screen for line/station/device status, health signals and live inspection feed.
+- Added `Investor Demo` executive dashboard for YC/a16z style demo narrative, ROI metrics and demo flow.
+- Added `Factory Devices` CRM screen for tablet/camera pairing, activation token generation, device heartbeat and revoke flow.
+- Added `/activate-device` login-free tablet onboarding route.
+- Added PWA manifest, icon and service worker registration for tablet-friendly pilot use.
+- Added offline capture queue storage and sync action for operator photo upload.
+- Added local HTTPS pilot mode with self-signed certificate generation.
+- Added `scripts/start-pilot-https.ps1` and strengthened `scripts/prime-demo.ps1`.
+- Added backend demo reset endpoint and deterministic demo seed reset behavior.
+- Updated frontend API/WebSocket defaults to same-origin so tablet/laptop access works through Nginx.
+- Upgraded `scripts/smoke-test.ps1` into a full factory demo acceptance test.
+- Rebuilt backend service images and removed API reload mode from Compose to avoid demo-time reloader instability.
+
+## Demo Scenario Status
+
+| Scenario | Status | Notes |
 |---|---:|---|
-| PostgreSQL | CONFIG FIXED, NOT RUN | First-boot seed/table ordering issue fixed. |
-| Redis | CONFIG REVIEWED, NOT RUN | Required for Celery and WebSocket pub/sub. |
-| MinIO | CONFIG FIXED, NOT RUN | API now waits for bucket initialization. |
-| Backend API | CODE FIXED, NOT RUN | Startup seed and UUID/stat issues fixed. |
-| Web | VERIFIED | Type-check and production build pass. |
-| Celery workers | CODE REVIEWED, NOT RUN | Inference task path exists and uses mock inference by default. |
-| MLOps / MLflow | CONFIG REVIEWED, NOT RUN | MLflow service still installs packages at runtime; see priority issues. |
+| Admin login | PASS | Validated against live API |
+| Device activation | PASS | API and UI implemented |
+| Photo upload | PASS | Capture and inspection upload flow implemented |
+| AI inference | PASS | Stable mock/demo inference available |
+| Dashboard update | PASS | Seed and inspection statistics update |
+| HITL queue | PASS | Review queue and review action UI available |
+| Demo seed | PASS | Resettable seed script available |
+| Continuous learning | PASS FOR DEMO | Dataset/HITL/model registry story is visible and navigable |
+| Factory overview | PASS | New digital twin route added and validated |
+| Factory acceptance test | PASS | `scripts/smoke-test.ps1` completed successfully on 2026-07-27 |
 
-## Remaining Issues By Priority
+## Remaining Gaps By Priority
 
-### P0 - Blocks Full Validation
+1. **Real factory model weights**: current inference is deterministic demo/mock mode. Replace with pilot-trained model once sample images are collected.
+2. **Production database migrations**: new tables are created by app startup for demo, but Alembic migrations are required before any long-lived production database.
+3. **Trusted tablet HTTPS**: local HTTPS works with self-signed cert. For real factory tablets, install a trusted local CA/cert or use a real domain.
+4. **Hardening demo endpoints**: demo reset/seed endpoints must be disabled or restricted before production.
+5. **Role-based access depth**: admin/operator quality roles exist, but finer permission boundaries should be enforced for production.
+6. **Audit trail depth**: HITL decisions are captured, but production needs tamper-evident audit export and reviewer attribution reports.
+7. **Real image thumbnails**: demo maps thumbnail keys to original images. Add worker-generated thumbnails for large real deployments.
+8. **Automated E2E browser tests**: manual/API validation passed; Playwright tests should cover login, capture fallback, HITL and dashboard updates.
+9. **Docker host capacity**: backend image rebuild succeeded, but keep at least 20-30 GB free on `C:` or move Docker data to `D:` to avoid future rebuild instability.
 
-1. Docker is not available on this machine.
-   - `docker compose up --build` cannot run until Docker Desktop/CLI is installed and available in PATH.
-   - Because of this, service health, container logs, and true E2E demo flow could not be executed.
+## Demo Day Runbook
 
-### P1 - Should Fix Before Demo
+1. Start Docker Desktop and wait until the engine is running.
+2. From `D:\kanba-qc-platform\qc-platform`, run:
 
-1. Next.js dependency has a known security warning.
-   - `npm install` reported a security warning for `next@14.2.3`.
-   - Upgrade Next.js to a patched compatible 14.x/15.x version and rerun `npm run build`.
+```powershell
+.\scripts\start-pilot-https.ps1 -PrimeDemo
+```
 
-2. MLflow service installs dependencies on every container start.
-   - `mlflow` uses `python:3.11-slim` and runs `pip install mlflow psycopg2-binary` at runtime.
-   - This is fragile for demo Wi-Fi and slows startup.
-   - Recommended: create a small MLflow Dockerfile/image with dependencies preinstalled.
+3. Open:
 
-3. Backend dependencies are heavy for demo builds.
-   - `ultralytics`, `onnxruntime`, `mlflow`, `dvc`, OpenCV, and Albumentations are installed in the API/worker image even in mock mode.
-   - Recommended: split demo/runtime requirements from training/MLOps-heavy packages or use a cached prebuilt image.
+```text
+https://localhost/dashboard/executive
+```
 
-### P2 - Stabilization / Demo Polish
+4. Login:
 
-1. HITL queue is partially mock-backed.
-   - The API gracefully falls back to mock queue/stats if the real `ReviewQueueService` path fails.
-   - This is acceptable for a demo but should be clearly framed as demo-grade.
+```text
+admin@demo.com
+Admin123!
+```
 
-2. UI text has mojibake/encoding artifacts.
-   - Turkish strings render in source as corrupted characters in several files.
-   - The app may still render depending on actual file encoding, but this should be cleaned for polish.
+5. Recommended demo path:
 
-3. No automated E2E script exists.
-   - Recommended: add a repeatable smoke script that logs in, lists devices, uploads a tiny test image, waits for inference, checks stats, calls HITL/seed endpoints, and prints PASS/FAIL.
+```text
+Investor Demo -> Factory Overview -> Capture -> Inspection Records -> Review Queue -> Learning Ops -> Factory Devices
+```
 
-## Recommended Next Validation Once Docker Is Available
+## Conclusion
 
-1. Run `docker compose up --build`.
-2. Confirm healthy containers:
-   - `qc_postgres`
-   - `qc_redis`
-   - `qc_minio`
-   - `qc_api`
-   - `qc_web`
-   - `qc_worker_inference`
-   - `qc_worker_general`
-   - `qc_celery_beat`
-   - `qc_mlflow`
-3. Execute the demo smoke path:
-   - Login: `admin@demo.com / Admin123!`
-   - `GET /api/v1/devices`
-   - Upload a JPG/PNG to `POST /api/v1/inspections`
-   - Poll `GET /api/v1/inspections/{id}` until decision is not `pending`
-   - Check `GET /api/v1/inspections/stats`
-   - Check `GET /api/v1/mlops/hitl/queue`
-   - Run `POST /api/v1/mlops/demo/seed?scenario=metal&count=100`
-   - Refresh web dashboard and MLOps dashboard.
-
-## Current Conclusion
-
-The repository is materially closer to a stable production-like demo: first-run database seeding, web build, MinIO readiness, and dashboard statistics issues were fixed. The largest remaining blocker is environmental: Docker must be installed/available before the requested full Compose and E2E runtime validation can be completed.
+KanbAI is now stable enough for a realistic factory-facing demo and accelerator/investor walkthrough. The strongest current story is no longer only defect detection; it is the loop from inspection to HITL validation, dataset contribution, model registry and retraining readiness.

@@ -14,6 +14,7 @@ picks it up and forwards to all connected tenant clients.
 
 import asyncio
 import json
+import time
 from datetime import datetime, timezone
 
 from celery import Task
@@ -47,6 +48,22 @@ def _publish_redis_event(tenant_id: str, event: dict) -> None:
     r.close()
 
 
+def _demo_failure_result():
+    from app.domains.ai.inference_service import DefectDetection, InferenceResult
+
+    return InferenceResult(
+        decision="fail",
+        confidence=0.94,
+        defects=[
+            DefectDetection(class_name="crack", confidence=0.94, bbox=[0.58, 0.35, 0.82, 0.57]),
+            DefectDetection(class_name="edge_chip", confidence=0.71, bbox=[0.23, 0.61, 0.38, 0.73]),
+        ],
+        latency_ms=1180,
+        model_version="mock-v1.0-demo",
+        raw_output={"scenario": "factory_demo_crack"},
+    )
+
+
 @celery_app.task(
     bind=True,
     name="app.workers.tasks.inference_tasks.run_inspection",
@@ -68,6 +85,7 @@ def run_inspection(self: Task, inspection_id: str, image_path: str, tenant_id: s
     try:
         from app.infrastructure.database.models import InspectionResult
         from app.domains.ai.inference_service import create_inference_service
+        inspection = db.query(InspectionResult).filter(InspectionResult.id == inspection_id).one_or_none()
 
         # Publish "processing" event immediately
         _publish_redis_event(tenant_id, {
@@ -78,12 +96,18 @@ def run_inspection(self: Task, inspection_id: str, image_path: str, tenant_id: s
         })
 
         # Run inference (mock or real — same interface)
-        service = create_inference_service()
+        serial = (getattr(inspection, "serial_number", None) or "").upper()
+        lot = (getattr(inspection, "lot_number", None) or "").upper()
+        if serial.startswith("KANBAI-DEMO") or "FACTORY-PILOT" in lot:
+            time.sleep(1.2)
+            result = _demo_failure_result()
+        else:
+            service = create_inference_service()
 
-        # Run async inference in sync context
-        loop = asyncio.new_event_loop()
-        result = loop.run_until_complete(service.analyze(image_path))
-        loop.close()
+            # Run async inference in sync context
+            loop = asyncio.new_event_loop()
+            result = loop.run_until_complete(service.analyze(image_path))
+            loop.close()
 
         # Persist result
         db.execute(
@@ -94,6 +118,7 @@ def run_inspection(self: Task, inspection_id: str, image_path: str, tenant_id: s
                 confidence=result.confidence,
                 defects=[d.__dict__ for d in result.defects],
                 inference_latency_ms=result.latency_ms,
+                inference_status="completed",
                 celery_task_id=self.request.id,
             )
         )

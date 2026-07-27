@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: Literal["json", "console"] = "json"
 
+    # Demo controls
+    demo_mode: bool = False
+
     @property
     def is_development(self) -> bool:
         return self.app_env == "development"

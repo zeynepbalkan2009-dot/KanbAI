@@ -29,6 +29,7 @@ The repository is ready for final review before commit and push. Docker runtime 
 | Web production build | PASS |
 | Backend service image rebuild | PASS |
 | GitHub Actions CI workflow | READY |
+| Demo endpoint production guard | PASS |
 
 ## Git Hygiene
 
@@ -47,7 +48,7 @@ Excluded from Git:
 1. Replace mock inference with trained factory model weights.
 2. Add database migrations for production databases.
 3. Rotate demo secrets.
-4. Disable or restrict demo reset/seed endpoints.
+4. Keep `DEMO_MODE=false` in production and audit any demo reset/seed access.
 5. Expand CI with API integration tests once a test database workflow is added.
 6. Add trusted HTTPS certificates for real tablets.
 

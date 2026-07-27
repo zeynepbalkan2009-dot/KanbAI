@@ -55,6 +55,7 @@ npm run build
 | Factory acceptance smoke | PASS | Readiness, login, seed, activation, photo upload, AI inference, stats, HITL, MLOps, CSV export and HTTPS web routes passed |
 | Backend image rebuild | PASS | API/worker/beat/flower images rebuilt with `bcrypt==4.1.3` baked in |
 | API runtime mode | PASS | API now runs without `--reload` in Compose for stable demo behavior |
+| Demo endpoint production guard | PASS | `/mlops/demo/reset` and `/mlops/demo/seed` are blocked when `APP_ENV=production`, even if `DEMO_MODE=true` |
 
 ## Completed Product Improvements
 
@@ -70,6 +71,7 @@ npm run build
 - Updated frontend API/WebSocket defaults to same-origin so tablet/laptop access works through Nginx.
 - Upgraded `scripts/smoke-test.ps1` into a full factory demo acceptance test.
 - Rebuilt backend service images and removed API reload mode from Compose to avoid demo-time reloader instability.
+- Added `DEMO_MODE` config and production guard for demo reset/seed endpoints.
 
 ## Demo Scenario Status
 
@@ -91,12 +93,11 @@ npm run build
 1. **Real factory model weights**: current inference is deterministic demo/mock mode. Replace with pilot-trained model once sample images are collected.
 2. **Production database migrations**: new tables are created by app startup for demo, but Alembic migrations are required before any long-lived production database.
 3. **Trusted tablet HTTPS**: local HTTPS works with self-signed cert. For real factory tablets, install a trusted local CA/cert or use a real domain.
-4. **Hardening demo endpoints**: demo reset/seed endpoints must be disabled or restricted before production.
-5. **Role-based access depth**: admin/operator quality roles exist, but finer permission boundaries should be enforced for production.
-6. **Audit trail depth**: HITL decisions are captured, but production needs tamper-evident audit export and reviewer attribution reports.
-7. **Real image thumbnails**: demo maps thumbnail keys to original images. Add worker-generated thumbnails for large real deployments.
-8. **Automated E2E browser tests**: manual/API validation passed; Playwright tests should cover login, capture fallback, HITL and dashboard updates.
-9. **Docker host capacity**: backend image rebuild succeeded, but keep at least 20-30 GB free on `C:` or move Docker data to `D:` to avoid future rebuild instability.
+4. **Role-based access depth**: admin/operator quality roles exist, but finer permission boundaries should be enforced for production.
+5. **Audit trail depth**: HITL decisions are captured, but production needs tamper-evident audit export and reviewer attribution reports.
+6. **Real image thumbnails**: demo maps thumbnail keys to original images. Add worker-generated thumbnails for large real deployments.
+7. **Automated E2E browser tests**: manual/API validation passed; Playwright tests should cover login, capture fallback, HITL and dashboard updates.
+8. **Docker host capacity**: backend image rebuild succeeded, but keep at least 20-30 GB free on `C:` or move Docker data to `D:` to avoid future rebuild instability.
 
 ## Demo Day Runbook
 

@@ -29,10 +29,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.auth.service import get_current_user, CurrentUser, require_role
 from app.infrastructure.database.session import get_db
+from app.core.config import get_settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/mlops", tags=["mlops"])
+settings = get_settings()
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -306,6 +308,14 @@ async def _table_exists(db: AsyncSession, table_name: str) -> bool:
     return result.scalar_one_or_none() is not None
 
 
+def _require_demo_mode() -> None:
+    if settings.is_production or not settings.demo_mode:
+        raise HTTPException(
+            status_code=403,
+            detail="Demo reset/seed endpoints are disabled outside explicit demo mode.",
+        )
+
+
 async def _delete_demo_records(db: AsyncSession, factory_id: str) -> dict[str, int]:
     demo_filter = """
         factory_id = :factory_id
@@ -398,6 +408,7 @@ async def reset_demo_data(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete only demo-tagged records for the current factory tenant."""
+    _require_demo_mode()
     try:
         deleted = await _delete_demo_records(db, current.tenant_id)
         await db.commit()
@@ -421,6 +432,7 @@ async def seed_demo_data(
     Seed realistic demo inspection data for investor presentation.
     Creates N inspection records with realistic AI results.
     """
+    _require_demo_mode()
     try:
         import sys
         from pathlib import Path

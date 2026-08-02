@@ -46,7 +46,7 @@ npm run build
 | Admin login | PASS | `admin@demo.com / Admin123!` returns bearer token |
 | Demo reset + seed | PASS | 8 metal inspection records seeded after reset |
 | Web TypeScript | PASS | `tsc --noEmit --incremental false` |
-| Web production build | PASS | Next build compiled and generated 14 app routes |
+| Web production build | PASS | Next build compiled and generated app routes including `/dashboard/pilot` |
 | HTTPS executive route | PASS | `/dashboard/executive` returns 200 |
 | HTTPS factory overview route | PASS | `/dashboard/factory` returns 200 |
 | HTTPS capture route | PASS | `/dashboard/capture` returns 200 |
@@ -60,6 +60,7 @@ npm run build
 | HTTPS route smoke check | PASS | Self-signed local HTTPS checks use short-timeout GET requests for reliable Windows demo validation |
 | Pilot Workspace route | PASS | `/dashboard/pilot` is included in production build and HTTPS smoke validation |
 | Docker web runtime | PASS | Web service uses the Next.js standalone production target instead of live dev compilation |
+| GitHub Docker demo smoke | READY | CI builds Docker Compose, waits for API readiness, runs Alembic and executes the factory acceptance smoke test |
 
 ## Completed Product Improvements
 
@@ -82,6 +83,7 @@ npm run build
 - Added pilot proposal and data collection protocol documents for real factory trials.
 - Added a dashboard Pilot Workspace for CRM-style pilot readiness, scope, dataset targets and risk tracking.
 - Switched the Docker web service to the Next.js standalone production target to avoid live-demo route compilation delays.
+- Extended GitHub Actions with a Docker Compose demo smoke test for GitHub-side demo validation.
 
 ## Demo Scenario Status
 

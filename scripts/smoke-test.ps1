@@ -32,6 +32,17 @@ function Step($Message) {
   Write-Host "==> $Message" -ForegroundColor Cyan
 }
 
+function Get-CurlCommand {
+  $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+  if (-not $curl) {
+    $curl = Get-Command curl -CommandType Application -ErrorAction SilentlyContinue
+  }
+  if (-not $curl) {
+    Fail "curl executable was not found"
+  }
+  return $curl.Source
+}
+
 function Invoke-Json($Method, $Url, $Headers = @{}, $Body = $null) {
   $args = @{
     Uri = $Url
@@ -116,7 +127,10 @@ try {
   Pass "device activated: $($device.id)"
 
   Step "Photo upload and AI inference"
-  $pngPath = Join-Path $env:TEMP "kanbai-smoke-part.png"
+  $tempRoot = $env:TEMP
+  if (-not $tempRoot) { $tempRoot = $env:TMPDIR }
+  if (-not $tempRoot) { $tempRoot = [IO.Path]::GetTempPath() }
+  $pngPath = Join-Path $tempRoot "kanbai-smoke-part.png"
   $pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAIklEQVR4nGP8z8Dwn4ECwESJ5lEDRg0YNWDUgFEDBgAAoyICIRKzXzAAAAAASUVORK5CYII="
   [IO.File]::WriteAllBytes($pngPath, [Convert]::FromBase64String($pngBase64))
 
@@ -131,7 +145,8 @@ try {
     "-F", "lot_number=FACTORY-PILOT-SMOKE",
     "-F", "file=@$pngPath;type=image/png"
   )
-  $uploadRaw = & curl.exe @curlArgs
+  $curlCommand = Get-CurlCommand
+  $uploadRaw = & $curlCommand @curlArgs
   if ($LASTEXITCODE -ne 0) {
     Fail "photo upload curl failed"
   }

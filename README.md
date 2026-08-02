@@ -79,6 +79,8 @@ Run the full factory acceptance smoke test:
 
 This validates readiness, admin login, demo reset/seed, device activation, photo upload, AI inference, dashboard stats, HITL review, dataset contribution, MLOps registry, CSV export and HTTPS web routes.
 
+GitHub Actions also runs a Docker Compose demo smoke test on every push and pull request. The `Docker demo smoke test` job builds the stack, waits for API readiness, runs Alembic migrations, then executes `scripts/smoke-test.ps1` against the live services.
+
 ## Database Migrations
 
 For a fresh PostgreSQL database, run:

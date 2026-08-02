@@ -28,6 +28,7 @@ The repository is ready for factory pilot review and GitHub handoff. Docker runt
 | Pilot Workspace route | PASS |
 | Web TypeScript | PASS |
 | Web production build | PASS |
+| GitHub Docker demo smoke | READY |
 | Docker web production target | PASS |
 | Backend service image rebuild | PASS |
 | GitHub Actions CI workflow | READY |
@@ -52,14 +53,14 @@ Excluded from Git:
 1. Replace mock inference with trained factory model weights.
 2. Rotate demo secrets.
 3. Keep `DEMO_MODE=false` in production and audit any demo reset/seed access.
-4. Expand CI with API integration tests once a test database workflow is added.
-5. Add trusted HTTPS certificates for real tablets.
+4. Add trusted HTTPS certificates for real tablets.
+5. Expand CI with browser-level Playwright coverage for login and dashboard flows.
 
 ## Recommended Push
 
 ```powershell
 git status --short
 git add .
-git commit -m "Add factory pilot proposal package"
+git commit -m "Add GitHub demo smoke test"
 git push -u origin main
 ```

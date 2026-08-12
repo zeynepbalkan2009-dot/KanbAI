@@ -33,14 +33,14 @@ function Step($Message) {
 }
 
 function Get-CurlCommand {
-  $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
-  if (-not $curl) {
-    $curl = Get-Command curl -CommandType Application -ErrorAction SilentlyContinue
+  $curl = @(Get-Command curl.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
+  if ($curl.Count -eq 0) {
+    $curl = @(Get-Command curl -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1)
   }
-  if (-not $curl) {
+  if ($curl.Count -eq 0) {
     Fail "curl executable was not found"
   }
-  return $curl.Source
+  return $curl[0].Source
 }
 
 function Invoke-Json($Method, $Url, $Headers = @{}, $Body = $null) {

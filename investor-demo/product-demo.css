@@ -55,6 +55,7 @@
 .inspection-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
 .inspection-meta span{padding:12px;border:1px solid var(--demo-line);border-radius:12px;background:#f9fbfd;color:var(--demo-muted);font-size:13px;font-weight:800}
 .run-button{width:100%;justify-content:center}
+.run-button:disabled{opacity:.55;cursor:not-allowed}
 .decision-panel{display:grid;gap:18px}
 .decision-card{padding:20px}
 .decision-card p{color:var(--demo-muted);line-height:1.55}
@@ -71,6 +72,11 @@ dd{margin:0;font-size:14px;font-weight:800}
 .learning-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}
 .learning-stats span{padding:14px;border-radius:12px;background:#e9fbff;color:#527;font-size:12px}
 .learning-stats b{display:block;color:#07111d;font-size:26px}
+.contact-panel{display:grid;gap:4px;margin-top:12px;padding:14px;border:1px solid #bdefff;border-radius:12px;background:#f0fbff}
+.contact-panel[hidden]{display:none}
+.contact-panel span{color:#007da8;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.contact-panel strong{font-size:14px}
+.contact-panel small{color:var(--demo-muted);line-height:1.45}
 .decision-pass{color:var(--demo-green)}
 .decision-review{color:#c77b00}
 .decision-fail{color:var(--demo-red)}

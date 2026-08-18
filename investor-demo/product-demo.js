@@ -19,17 +19,22 @@ const samples = [
   ["sample-18.svg", "Radius Block R3", "Radius scratch", "Line 4 / Station 6", "Radius block", "REVIEW", 89, "Guide rail contact"],
   ["sample-19.svg", "Lower Yoke S10", "Lower edge burr", "Line 2 / Station 3", "Yoke component", "FAIL", 92, "Secondary deburr skipped"],
   ["sample-20.svg", "Casting T44", "Inclusion", "Line 3 / Station 7", "Cast housing", "REVIEW", 90, "Possible sand inclusion"]
-].map((row, index) => ({
-  id: index + 1,
-  file: `assets/samples/${row[0]}`,
-  part: row[1],
-  defect: row[2],
-  station: row[3],
-  material: row[4],
-  outcome: row[5],
-  confidence: row[6],
-  rootCause: row[7]
-}));
+].map((row, index) => {
+  const id = index + 1;
+  return {
+    id,
+    file: `assets/samples/${row[0]}`,
+    part: row[1],
+    defect: row[2],
+    station: row[3],
+    material: row[4],
+    outcome: row[5],
+    confidence: row[6],
+    rootCause: row[7],
+    box: sampleBox(id),
+    simulated: false
+  };
+});
 
 const elements = {
   grid: document.querySelector("#sampleGrid"),
@@ -56,7 +61,9 @@ const elements = {
   reviewDecision: document.querySelector("#reviewDecision"),
   reviewCopy: document.querySelector("#reviewCopy"),
   verifiedCount: document.querySelector("#verifiedCount"),
-  queueCount: document.querySelector("#queueCount")
+  queueCount: document.querySelector("#queueCount"),
+  pilotContact: document.querySelector("#pilotContact"),
+  contactPanel: document.querySelector("#contactPanel")
 };
 
 let selected = samples[0];
@@ -64,6 +71,22 @@ let objectUrl = null;
 let verified = 249;
 let queue = 18;
 const stepOrder = ["source", "inspect", "review", "learn"];
+
+function sampleBox(id) {
+  const boxes = [
+    [47, 22, 21, 33], [50, 28, 22, 32], [62, 20, 15, 22], [32, 23, 18, 31],
+    [27, 52, 34, 18], [44, 16, 16, 49], [70, 50, 15, 24], [66, 22, 17, 30],
+    [36, 18, 18, 46], [31, 55, 28, 17], [59, 30, 17, 25], [23, 24, 27, 24],
+    [72, 24, 14, 35], [32, 42, 14, 21], [62, 24, 17, 41], [58, 21, 18, 31],
+    [51, 50, 22, 21], [28, 28, 18, 37], [40, 58, 25, 17], [61, 18, 18, 38]
+  ];
+  const [left, top, width, height] = boxes[(id - 1) % boxes.length];
+  return {left, top, width, height};
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
 
 function setStep(activeStep) {
   const activeIndex = stepOrder.indexOf(activeStep);
@@ -102,6 +125,7 @@ function updatePreview(source = "Sample scan") {
   elements.timestamp.textContent = nowLabel();
   elements.sourcePill.textContent = source;
   elements.bboxLabel.textContent = `${selected.defect.toLowerCase()} - ${selected.confidence}%`;
+  placeBox(selected.box || sampleBox(1));
   elements.learnCard.hidden = true;
   elements.decisionTitle.textContent = "Waiting for inspection";
   elements.decisionTitle.className = "";
@@ -110,15 +134,26 @@ function updatePreview(source = "Sample scan") {
   elements.confidenceBar.style.width = "0%";
   elements.defectClass.textContent = "--";
   elements.rootCause.textContent = "--";
+  elements.contactPanel.hidden = true;
+  elements.pilotContact.textContent = "Discuss a real pilot";
   setStep("source");
   renderSamples();
+}
+
+function placeBox(box) {
+  elements.bbox.style.left = `${box.left}%`;
+  elements.bbox.style.top = `${box.top}%`;
+  elements.bbox.style.width = `${box.width}%`;
+  elements.bbox.style.height = `${box.height}%`;
 }
 
 function runInspection() {
   const tone = selected.outcome.toLowerCase();
   elements.decisionTitle.textContent = selected.outcome;
   elements.decisionTitle.className = `decision-${tone}`;
-  elements.decisionBody.textContent = selected.outcome === "PASS"
+  elements.decisionBody.textContent = selected.simulated
+    ? "Browser-side simulated vision scan estimated visual risk from contrast, edge density and image structure."
+    : selected.outcome === "PASS"
     ? "No critical defect detected. Human review is still available for audit."
     : "AI detected a visual anomaly and recommends human validation before release.";
   elements.confidenceValue.textContent = `${selected.confidence}%`;
@@ -137,8 +172,144 @@ function recordReview(label, copy) {
   elements.verifiedCount.textContent = verified;
   elements.queueCount.textContent = queue;
   elements.learnCard.hidden = false;
+  elements.contactPanel.hidden = true;
   setStep("learn");
   elements.learnCard.scrollIntoView({behavior: "smooth", block: "center"});
+}
+
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Could not read uploaded image."));
+    image.src = url;
+  });
+}
+
+async function analyzeUploadedImage(url, fileName) {
+  const image = await loadImage(url);
+  const size = 96;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d", {willReadFrequently: true});
+  ctx.drawImage(image, 0, 0, size, size);
+  const pixels = ctx.getImageData(0, 0, size, size).data;
+  const gray = new Float32Array(size * size);
+  let sum = 0;
+  let dark = 0;
+  let bright = 0;
+  let saturation = 0;
+
+  for (let i = 0, p = 0; i < pixels.length; i += 4, p += 1) {
+    const r = pixels[i];
+    const g = pixels[i + 1];
+    const b = pixels[i + 2];
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const value = 0.299 * r + 0.587 * g + 0.114 * b;
+    gray[p] = value;
+    sum += value;
+    if (value < 55) dark += 1;
+    if (value > 210) bright += 1;
+    saturation += max === 0 ? 0 : (max - min) / max;
+  }
+
+  const total = gray.length;
+  const mean = sum / total;
+  let variance = 0;
+  let edgeSum = 0;
+  let edgeCount = 0;
+  let minX = size;
+  let minY = size;
+  let maxX = 0;
+  let maxY = 0;
+  let hotX = 0;
+  let hotY = 0;
+  let hotWeight = 0;
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const index = y * size + x;
+      const value = gray[index];
+      variance += (value - mean) ** 2;
+      if (x < size - 1 && y < size - 1) {
+        const edge = Math.abs(value - gray[index + 1]) + Math.abs(value - gray[index + size]);
+        edgeSum += edge;
+        edgeCount += 1;
+        if (edge > 52) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+          hotX += x * edge;
+          hotY += y * edge;
+          hotWeight += edge;
+        }
+      }
+    }
+  }
+
+  const contrast = Math.sqrt(variance / total);
+  const edgeDensity = edgeSum / edgeCount / 255;
+  const darkRatio = dark / total;
+  const brightRatio = bright / total;
+  const colorfulness = saturation / total;
+  const name = fileName.toLowerCase();
+
+  const hints = [
+    [/crack|fracture|broken|fissure/, "Crack", "FAIL", "Likely fracture or discontinuity"],
+    [/scratch|scuff|abrasion/, "Scratch cluster", "REVIEW", "Surface handling or conveyor contact"],
+    [/rust|corrosion|oxid/, "Corrosion", "FAIL", "Possible oxidation or surface contamination"],
+    [/weld|seam/, "Weld anomaly", "REVIEW", "Possible weld bead variation"],
+    [/dent|deform|bend/, "Geometry deformation", "REVIEW", "Possible handling or forming issue"],
+    [/beam|steel|flange|metal/, "Surface scoring", "REVIEW", "Visible texture variation on metal surface"]
+  ];
+  const matched = hints.find(([pattern]) => pattern.test(name));
+
+  let defect = matched?.[1] || "Surface anomaly";
+  let outcome = matched?.[2] || "REVIEW";
+  let rootCause = matched?.[3] || "Human label required before model training";
+
+  if (!matched) {
+    if (edgeDensity < 0.04 && contrast < 28) {
+      defect = "No critical anomaly";
+      outcome = "PASS";
+      rootCause = "Low contrast variation and low edge disturbance";
+    } else if (darkRatio > 0.38 || contrast > 65) {
+      defect = "High-contrast defect";
+      outcome = "FAIL";
+      rootCause = "Strong local contrast suggests surface damage or occlusion";
+    } else if (colorfulness > 0.22 && brightRatio > 0.12) {
+      defect = "Coating inconsistency";
+      outcome = "REVIEW";
+      rootCause = "Color and brightness variance needs quality review";
+    }
+  }
+
+  const confidence = clamp(Math.round(56 + contrast * 0.33 + edgeDensity * 145 + darkRatio * 16 + colorfulness * 10), 62, 97);
+  const box = maxX > minX && maxY > minY && hotWeight > 0
+    ? {
+      left: clamp(Math.round((hotX / hotWeight / size) * 100) - 11, 6, 78),
+      top: clamp(Math.round((hotY / hotWeight / size) * 100) - 14, 8, 72),
+      width: clamp(Math.round(18 + edgeDensity * 42), 18, 36),
+      height: clamp(Math.round(22 + contrast * 0.18), 20, 40)
+    }
+    : {left: 42, top: 28, width: 22, height: 30};
+
+  return {
+    id: 0,
+    file: url,
+    part: fileName.replace(/\.[^.]+$/, "") || "Uploaded part",
+    defect,
+    station: "Manual upload / Browser scan",
+    material: "User supplied image",
+    outcome,
+    confidence,
+    rootCause,
+    box,
+    simulated: true
+  };
 }
 
 elements.grid?.addEventListener("click", (event) => {
@@ -151,7 +322,7 @@ elements.grid?.addEventListener("click", (event) => {
   updatePreview("Sample scan");
 });
 
-elements.upload?.addEventListener("change", (event) => {
+elements.upload?.addEventListener("change", async (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
   if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -160,14 +331,26 @@ elements.upload?.addEventListener("change", (event) => {
     id: 0,
     file: objectUrl,
     part: file.name.replace(/\.[^.]+$/, "") || "Uploaded part",
-    defect: "Unknown anomaly",
-    station: "Manual upload / Investor demo",
+    defect: "Analyzing image",
+    station: "Manual upload / Browser scan",
     material: "User supplied image",
     outcome: "REVIEW",
-    confidence: 89,
-    rootCause: "Needs human label before training"
+    confidence: 67,
+    rootCause: "Browser analysis in progress",
+    box: {left: 42, top: 28, width: 22, height: 30},
+    simulated: true
   };
-  updatePreview("Uploaded image");
+  updatePreview("Analyzing image");
+  elements.inspect.disabled = true;
+  try {
+    selected = await analyzeUploadedImage(objectUrl, file.name);
+    updatePreview("Uploaded image analyzed");
+  } catch {
+    selected.rootCause = "Image could not be decoded; human review required";
+    updatePreview("Uploaded image");
+  } finally {
+    elements.inspect.disabled = false;
+  }
 });
 
 elements.reset?.addEventListener("click", () => {
@@ -182,6 +365,15 @@ elements.inspect?.addEventListener("click", runInspection);
 document.querySelector("#confirm")?.addEventListener("click", () => recordReview("Approved for dataset", "The quality reviewer accepted the AI finding and added it to the learning queue."));
 document.querySelector("#reject")?.addEventListener("click", () => recordReview("Rejected by reviewer", "The reviewer blocked release and preserved the image as a verified defect example."));
 document.querySelector("#wrong")?.addEventListener("click", () => recordReview("Prediction corrected", "The reviewer corrected the label, creating high-value training data for the next model."));
+elements.pilotContact?.addEventListener("click", async () => {
+  elements.contactPanel.hidden = false;
+  try {
+    await navigator.clipboard.writeText("zeynep.balkan2009@gmail.com");
+    elements.pilotContact.textContent = "Email copied";
+  } catch {
+    elements.pilotContact.textContent = "Contact details shown";
+  }
+});
 
 renderSamples();
 updatePreview();

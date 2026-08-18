@@ -1,0 +1,17 @@
+{$DEMO_DOMAIN} {
+    encode zstd gzip
+
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    @api path /api/* /health /ready
+    reverse_proxy @api api:8000
+
+    @websocket path /ws/*
+    reverse_proxy @websocket api:8000
+
+    reverse_proxy web:3000
+}

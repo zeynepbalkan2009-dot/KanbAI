@@ -100,6 +100,13 @@ Do not use demo credentials, demo reset/seed, or self-signed TLS as the factory 
 For a controlled pilot, use `scripts/start-real-pilot.ps1`; it requires
 `PILOT_MODE=true` and `DEMO_MODE=false`, and publishes only Nginx ports 80/443.
 
+## Public Investor Demo
+
+The landing page at `/` and product demo at `/login` are designed to be served
+from the same public HTTPS domain. The deployable, isolated demo stack is
+documented in [Public Investor Demo Deployment](docs/PUBLIC_DEMO_DEPLOYMENT.md).
+It uses mock inference and must never receive real factory data.
+
 ## Real YOLOv8 Inference Opt-In
 
 The stable demo and CI path intentionally run with:

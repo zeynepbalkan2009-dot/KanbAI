@@ -1,0 +1,77 @@
+# Public investor-demo overlay. It keeps only Caddy ports 80/443 public,
+# builds immutable application images, and obtains a trusted TLS certificate
+# after DEMO_DOMAIN points to the host.
+services:
+  api:
+    build:
+      target: production
+      args:
+        REQUIREMENTS_FILE: requirements-demo.txt
+    volumes: !reset []
+    ports: !reset []
+  worker-inference:
+    build:
+      target: production
+      args:
+        REQUIREMENTS_FILE: requirements-demo.txt
+    volumes: !reset []
+  worker-general:
+    build:
+      target: production
+      args:
+        REQUIREMENTS_FILE: requirements-demo.txt
+    volumes: !reset []
+  celery-beat:
+    build:
+      target: production
+      args:
+        REQUIREMENTS_FILE: requirements-demo.txt
+    volumes: !reset []
+    command: >
+      celery -A app.workers.celery_app beat
+      --loglevel=info
+      --schedule=/tmp/celerybeat-schedule
+  flower:
+    build:
+      target: production
+      args:
+        REQUIREMENTS_FILE: requirements-demo.txt
+    volumes: !reset []
+    ports: !reset []
+  postgres:
+    ports: !reset []
+  redis:
+    ports: !reset []
+  minio:
+    ports: !reset []
+  mlflow:
+    ports: !reset []
+  web:
+    ports: !reset []
+  nginx:
+    profiles: ["local-only"]
+    ports: !reset []
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: qc_public_demo_proxy
+    restart: unless-stopped
+    environment:
+      DEMO_DOMAIN: ${DEMO_DOMAIN:?Set DEMO_DOMAIN to the public demo hostname}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      - qc-net
+
+volumes:
+  caddy_data:
+  caddy_config:

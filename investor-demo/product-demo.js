@@ -70,8 +70,8 @@ const elements = {
   queueCount: document.querySelector("#queueCount"),
   pilotContact: document.querySelector("#pilotContact"),
   contactPanel: document.querySelector("#contactPanel"),
-  pitchStart: document.querySelector("#pitchStart"),
-  copyDemoLink: document.querySelector("#copyDemoLink")
+  pitchStarts: Array.from(document.querySelectorAll("[data-pitch-start]")),
+  copyDemoLinks: Array.from(document.querySelectorAll("[data-copy-demo-link]"))
 };
 
 let selected = samples[0];
@@ -502,21 +502,25 @@ elements.pilotContact?.addEventListener("click", async () => {
   }
 });
 
-elements.pitchStart?.addEventListener("click", () => {
-  selectSample(2, "Pitch sample");
-  elements.inspect.scrollIntoView({behavior: "smooth", block: "center"});
-  elements.pitchStart.textContent = "Pitch sample loaded";
+elements.pitchStarts.forEach((button) => {
+  button.addEventListener("click", () => {
+    selectSample(2, "Pitch sample");
+    elements.inspect.scrollIntoView({behavior: "smooth", block: "center"});
+    button.textContent = "Pitch sample loaded";
+  });
 });
 
-elements.copyDemoLink?.addEventListener("click", async () => {
-  const sampleId = selected.id || 2;
-  const url = `${window.location.origin}${window.location.pathname}?sample=${sampleId}`;
-  try {
-    await navigator.clipboard.writeText(url);
-    elements.copyDemoLink.textContent = "Link copied";
-  } catch {
-    elements.copyDemoLink.textContent = "Copy unavailable";
-  }
+elements.copyDemoLinks.forEach((button) => {
+  button.addEventListener("click", async () => {
+    const sampleId = selected.id || 2;
+    const url = `${window.location.origin}${window.location.pathname}?sample=${sampleId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      button.textContent = "Link copied";
+    } catch {
+      button.textContent = "Copy unavailable";
+    }
+  });
 });
 
 function bootFromUrl() {

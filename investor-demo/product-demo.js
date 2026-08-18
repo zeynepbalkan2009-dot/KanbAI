@@ -230,6 +230,10 @@ async function analyzeUploadedImage(url, fileName) {
   let neutral = 0;
   let colored = 0;
   let midTone = 0;
+  let foreground = 0;
+  let foregroundNeutral = 0;
+  let foregroundColored = 0;
+  let foregroundMidTone = 0;
 
   for (let i = 0, p = 0; i < pixels.length; i += 4, p += 1) {
     const r = pixels[i];
@@ -247,6 +251,12 @@ async function analyzeUploadedImage(url, fileName) {
     if (sat < 0.18 && value > 35 && value < 235) neutral += 1;
     if (sat > 0.32 && value > 45) colored += 1;
     if (value > 70 && value < 205) midTone += 1;
+    if (value < 242 || sat > 0.08) {
+      foreground += 1;
+      if (sat < 0.24 && value > 24 && value < 230) foregroundNeutral += 1;
+      if (sat > 0.38 && value > 45) foregroundColored += 1;
+      if (value > 45 && value < 215) foregroundMidTone += 1;
+    }
   }
 
   const total = gray.length;
@@ -292,29 +302,37 @@ async function analyzeUploadedImage(url, fileName) {
   const neutralRatio = neutral / total;
   const coloredRatio = colored / total;
   const midToneRatio = midTone / total;
+  const foregroundRatio = foreground / total;
+  const foregroundNeutralRatio = foreground === 0 ? 0 : foregroundNeutral / foreground;
+  const foregroundColoredRatio = foreground === 0 ? 0 : foregroundColored / foreground;
+  const foregroundMidToneRatio = foreground === 0 ? 0 : foregroundMidTone / foreground;
   const name = fileName.toLowerCase();
-  const metalNameHint = /steel|metal|alum|aluminum|aluminium|iron|casting|cast|weld|beam|flange|gear|rail|bracket|bearing|housing|machined|part|component|sheet|plate|bolt|screw|pipe|tube|profile/.test(name);
+  const metalNameHint = /steel|steal|corten|metal|alum|aluminum|aluminium|iron|casting|cast|weld|beam|flange|gear|rail|bracket|bearing|housing|machined|part|component|sheet|plate|bolt|screw|pipe|tube|profile/.test(name);
   const nonIndustrialNameHint = /screenshot|screen|diagram|chart|logo|presentation|slide|generated|loop|dashboard|website|web|ui|mockup|poster|person|face|animal|flower|landscape/.test(name);
   const metalVisualScore =
     neutralRatio * 0.52 +
+    foregroundNeutralRatio * 0.36 +
     clamp(contrast / 82, 0, 1) * 0.22 +
     clamp(edgeDensity / 0.16, 0, 1) * 0.22 +
-    midToneRatio * 0.12 -
+    midToneRatio * 0.08 +
+    foregroundMidToneRatio * 0.12 -
     coloredRatio * 0.55 -
+    foregroundColoredRatio * 0.18 -
     (darkRatio > 0.62 ? 0.22 : 0) -
     (brightRatio > 0.72 ? 0.18 : 0);
   const visuallyMetal =
-    metalVisualScore >= 0.48 &&
-    neutralRatio >= 0.46 &&
-    coloredRatio <= 0.2 &&
+    metalVisualScore >= 0.5 &&
+    foregroundRatio >= 0.08 &&
+    foregroundNeutralRatio >= 0.5 &&
+    foregroundColoredRatio <= 0.28 &&
     edgeDensity >= 0.025 &&
-    contrast >= 18 &&
-    midToneRatio >= 0.18;
+    contrast >= 14;
   const namedMetal =
     metalNameHint &&
-    neutralRatio >= 0.32 &&
-    coloredRatio <= 0.34 &&
-    contrast >= 12;
+    foregroundRatio >= 0.04 &&
+    foregroundColoredRatio <= 0.68 &&
+    contrast >= 6 &&
+    (foregroundNeutralRatio >= 0.22 || foregroundMidToneRatio >= 0.28 || edgeDensity >= 0.018);
   const inScope = !nonIndustrialNameHint && (namedMetal || visuallyMetal);
 
   if (!inScope) {

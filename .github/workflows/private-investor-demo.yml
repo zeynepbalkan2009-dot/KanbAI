@@ -7,14 +7,14 @@ on:
       - "investor-demo/**"
       - ".github/workflows/private-investor-demo.yml"
       - ".devcontainer/**"
-      - "docs/PRIVATE_GITHUB_DEMO.md"
+      - "docs/deployment/PRIVATE_GITHUB_DEMO.md"
   pull_request:
     branches: [main]
     paths:
       - "investor-demo/**"
       - ".github/workflows/private-investor-demo.yml"
       - ".devcontainer/**"
-      - "docs/PRIVATE_GITHUB_DEMO.md"
+      - "docs/deployment/PRIVATE_GITHUB_DEMO.md"
   workflow_dispatch:
 
 permissions:

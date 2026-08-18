@@ -76,9 +76,9 @@ Current status:
 - HTTPS pilot mode exists via `scripts/start-pilot-https.ps1`.
 - Device activation center exists at `/dashboard/devices`.
 - Tablet activation page exists at `/activate-device?token=...`.
-- Factory handoff runbook exists in `FACTORY_PILOT_HANDOFF.md`.
-- Pilot proposal one-pager exists in `PILOT_PROPOSAL_ONE_PAGER.md`.
-- Factory data collection protocol exists in `FACTORY_DATA_COLLECTION_PROTOCOL.md`.
+- Factory handoff runbook exists in `docs/pilot/FACTORY_PILOT_HANDOFF.md`.
+- Pilot proposal one-pager exists in `docs/pilot/PILOT_PROPOSAL_ONE_PAGER.md`.
+- Factory data collection protocol exists in `docs/pilot/FACTORY_DATA_COLLECTION_PROTOCOL.md`.
 - Full acceptance validation exists in `scripts/smoke-test.ps1`.
 - Camera still requires the tablet to trust the self-signed certificate, or a trusted certificate/tunnel must be used for separate-device tests.
 

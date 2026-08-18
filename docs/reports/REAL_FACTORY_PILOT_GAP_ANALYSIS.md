@@ -9,11 +9,11 @@ Status: not yet ready for an unattended production deployment. The repository is
 ## Sources Reviewed
 
 - `README.md`
-- `TECHNICAL_VALIDATION_REPORT.md`
-- `FACTORY_PILOT_HANDOFF.md`
-- `FACTORY_DATA_COLLECTION_PROTOCOL.md`
-- `docs/PILOT_ACCEPTANCE_CRITERIA.md`
-- `docs/SECURITY.md`
+- `docs/reports/TECHNICAL_VALIDATION_REPORT.md`
+- `docs/pilot/FACTORY_PILOT_HANDOFF.md`
+- `docs/pilot/FACTORY_DATA_COLLECTION_PROTOCOL.md`
+- `docs/pilot/PILOT_ACCEPTANCE_CRITERIA.md`
+- `docs/deployment/SECURITY.md`
 - `.env.example`
 - `docker-compose.yml`
 - `docker-compose.https.yml`
@@ -160,7 +160,7 @@ Remaining blockers:
 What exists:
 
 - The schema supports factory, line, station, device, product, shift, serial, lot, timestamps, image, decision, confidence, defects, human review, and dataset contributions.
-- `FACTORY_DATA_COLLECTION_PROTOCOL.md` defines the first pilot target: 20 PASS, 10 FAIL, and 5 REVIEW/ambiguous images for proof of concept.
+- `docs/pilot/FACTORY_DATA_COLLECTION_PROTOCOL.md` defines the first pilot target: 20 PASS, 10 FAIL, and 5 REVIEW/ambiguous images for proof of concept.
 - HITL review can create dataset contribution records.
 
 Remaining blockers:

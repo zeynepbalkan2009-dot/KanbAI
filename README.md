@@ -7,60 +7,65 @@ Industrial AI Quality Control Platform
 > Every inspection becomes training data.  
 > Every factory builds its own AI.
 
-KanbAI is a production-like factory demo for AI visual inspection, human-in-the-loop validation and continuous learning. It is designed for factory pilots, ITU Cekirdek / TUBITAK BIGG demo sessions, YC-style accelerator reviews and enterprise sales conversations.
+KanbAI is a factory-focused AI quality control platform for visual inspection,
+human-in-the-loop validation and continuous model improvement.
 
-## What KanbAI Shows
+## Public Demo
 
-- Operator photo capture from tablet/laptop
-- AI defect inference with PASS / REVIEW / FAIL decisions
-- Factory dashboard and digital twin overview
-- Device activation and factory endpoint CRM
-- Inspection records and CSV export
-- HITL review queue with corrected labels
+Investor site:
+
+```text
+https://zeynepbalkan2009-dot.github.io/KanbAI/
+```
+
+Interactive product demo:
+
+```text
+https://zeynepbalkan2009-dot.github.io/KanbAI/product-demo.html
+```
+
+The public demo is a browser-only simulation. It does not upload factory data,
+does not call the backend and does not claim validated production accuracy.
+
+## What It Shows
+
+- AI-assisted visual inspection workflow
+- PASS / REVIEW / FAIL quality decisions
+- Human approval, rejection and label correction
 - Dataset contribution from reviewed inspections
 - Continuous learning and model registry story
-- Investor / executive demo view
+- Factory dashboard, device activation and inspection records in the full stack
 
-The default mode is `AI_INFERENCE_MODE=mock` so the full workflow is stable without GPU or trained model weights. Real factory model weights can be added later.
+## Product Thesis
 
-## Readiness at a Glance
+Factories do not only need a defect detector. They need a quality operating
+layer where each inspection is traceable, reviewable and reusable for model
+improvement.
 
-| Use case | Status | Evidence |
-| --- | --- | --- |
-| Investor / accelerator demo | Ready | Docker smoke test, executive dashboard, stable mock inference |
-| Controlled first factory pilot | Ready to configure | Explicit Pilot Mode, non-destructive safety test, tenant bootstrap runbook |
-| Production rollout | Not claimed | Requires validated model metrics, trusted TLS, backup/restore rehearsal, and security hardening |
+KanbAI starts with one painful inspection point, measures the baseline, then
+expands across stations, defect classes and factories as verified data grows.
 
-The project deliberately distinguishes a persuasive demo from a real-factory trial. See the [Controlled Factory Pilot Runbook](docs/PILOT_MODE_RUNBOOK.md) before placing it on a line.
-
-## Stack
+## Full Stack
 
 - Web: Next.js 14, React, Tailwind, Recharts, Zustand
 - Backend: FastAPI, SQLAlchemy async
 - Database/cache: PostgreSQL, Redis
 - Storage: MinIO
-- Workers: Celery inference/general workers, Celery Beat, Flower
-- MLOps: lightweight demo model registry, dataset/HITL/retraining surfaces
+- Workers: Celery inference workers, Celery Beat, Flower
+- MLOps: demo model registry, dataset and retraining surfaces
 - Proxy: Nginx with local HTTPS pilot mode
-- Demo web container: Next.js standalone production server
 
-## Quick Start
+## Local Demo
 
 From the project root:
 
 ```powershell
 cd D:\kanba-qc-platform\qc-platform
 copy .env.example .env
-.\scripts\start-pilot-https.ps1 -PrimeDemo
+docker compose up -d --build
 ```
 
 Open:
-
-```text
-https://localhost/dashboard/executive
-```
-
-If the browser shows a certificate warning, continue for the local self-signed demo certificate. For a simpler laptop-only flow, open:
 
 ```text
 http://localhost
@@ -73,114 +78,40 @@ admin@demo.com
 Admin123!
 ```
 
-## Recommended Demo Path
-
-```text
-Investor Demo -> Pilot Workspace -> Factory Overview -> Capture -> Inspection Records -> Review Queue -> Learning Ops -> Factory Devices
-```
-
-## Demo Acceptance Test
-
-Run the full factory acceptance smoke test:
+Run the smoke test:
 
 ```powershell
-.\scripts\smoke-test.ps1 -ApiBaseUrl 'http://localhost:8000' -WebBaseUrl 'https://localhost' -AllowSelfSigned -SeedCount 8
+.\scripts\smoke-test.ps1 -ApiBaseUrl 'http://localhost:8000' -WebBaseUrl 'http://localhost' -SeedCount 8
 ```
 
-This validates readiness, admin login, demo reset/seed, device activation, photo upload, AI inference, dashboard stats, HITL review, dataset contribution, MLOps registry, CSV export and HTTPS web routes.
+## Factory Pilot
 
-GitHub Actions also runs a Docker Compose demo smoke test on every push and pull request. The `Docker demo smoke test` job builds the stack, waits for API readiness, runs Alembic migrations, then executes `scripts/smoke-test.ps1` against the live services.
+The factory pilot mode is separate from the public demo. It disables demo seed
+and reset endpoints, uses tenant/device setup and should run behind controlled
+HTTPS access.
 
-The same CI job then restarts the live API with `PILOT_MODE=true`, verifies startup completes without demo seeding, and confirms both demo data endpoints return HTTP 403 through `scripts/pilot-mode-smoke-test.ps1`.
+Start here:
 
-## Controlled Factory Pilot
-
-Do not use demo credentials, demo reset/seed, or self-signed TLS as the factory trial configuration. Start with the [Pilot Mode Runbook](docs/PILOT_MODE_RUNBOOK.md), which covers secret rotation, tenant bootstrap, HTTPS/network boundaries, and a non-destructive acceptance check.
-
-For a controlled pilot, use `scripts/start-real-pilot.ps1`; it requires
-`PILOT_MODE=true` and `DEMO_MODE=false`, and publishes only Nginx ports 80/443.
-
-## Public Investor Demo
-
-The landing page at `/` and product demo at `/login` are designed to be served
-from the same public HTTPS domain. The deployable, isolated demo stack is
-documented in [Public Investor Demo Deployment](docs/PUBLIC_DEMO_DEPLOYMENT.md).
-It uses mock inference and must never receive real factory data.
-
-Before making the repository public or enabling GitHub Pages, run the
-[Public Release Checklist](docs/PUBLIC_RELEASE_CHECKLIST.md) and
-`scripts/public-release-guard.ps1`.
-
-## Private GitHub Demo
-
-For GitHub-only review without publishing a public site, use the static
-[investor demo](investor-demo/index.html) through GitHub Codespaces. The
-dev container serves it on port `8080`, and Codespaces forwarded ports are
-private by default. See [Private GitHub Demo](docs/PRIVATE_GITHUB_DEMO.md).
-
-GitHub Pages deployment remains manual-only because a Pages site is public.
-
-## Real YOLOv8 Inference Opt-In
-
-The stable demo and CI path intentionally run with:
-
-```text
-AI_INFERENCE_MODE=mock
-```
-
-For a factory pilot with trained weights, install the full backend dependency set from `backend/requirements.txt`, place the model under `backend/models/best.pt` or mount another `.pt` file, then set:
-
-```text
-AI_INFERENCE_MODE=yolo
-YOLO_MODEL_PATH=models/best.pt
-```
-
-In YOLO mode the Celery inference worker downloads uploaded inspection images from MinIO into a temporary local file before running Ultralytics YOLOv8. Mock mode and the GitHub Actions smoke test are unchanged, so the acceptance demo remains deterministic without GPU or model weights.
-
-## Database Migrations
-
-For a fresh PostgreSQL database, run:
-
-```powershell
-docker compose exec api alembic upgrade head
-```
-
-The demo stack also creates tables automatically in development mode for convenience, but production and long-lived pilots should use Alembic migrations.
-
-## Useful URLs
-
-```text
-Web app:        https://localhost/dashboard/executive
-Pilot workspace:https://localhost/dashboard/pilot
-HTTP web app:   http://localhost
-API health:     http://localhost:8000/ready
-API docs:       http://localhost:8000/docs
-Flower:         http://localhost:5555
-MinIO console:  http://localhost:9001
-MLOps demo:     http://localhost:5000
-```
+- [Pilot Mode Runbook](docs/pilot/PILOT_MODE_RUNBOOK.md)
+- [Factory Pilot Handoff](docs/pilot/FACTORY_PILOT_HANDOFF.md)
+- [Pilot Acceptance Criteria](docs/pilot/PILOT_ACCEPTANCE_CRITERIA.md)
 
 ## Documentation
 
-- `TECHNICAL_VALIDATION_REPORT.md`
-- `FACTORY_PILOT_HANDOFF.md`
-- `PILOT_PROPOSAL_ONE_PAGER.md`
-- `FACTORY_DATA_COLLECTION_PROTOCOL.md`
-- `INVESTOR_ACCELERATOR_READINESS.md`
-- `YC_A16Z_DEMO_SCRIPT.md`
-- `ITU_BIGG_DEMO_GUIDE.md`
-- `docs/MOBILE_SETUP_GUIDE.md`
-- `docs/PILOT_INSTALLATION_GUIDE.md`
-- `docs/PILOT_ACCEPTANCE_CRITERIA.md`
-- `docs/SECURITY.md`
+- [Documentation index](docs/README.md)
+- [Architecture](docs/product/ARCHITECTURE.md)
+- [Public demo deployment](docs/deployment/PUBLIC_DEMO_DEPLOYMENT.md)
+- [Public release checklist](docs/deployment/PUBLIC_RELEASE_CHECKLIST.md)
+- [Technical validation report](docs/reports/TECHNICAL_VALIDATION_REPORT.md)
+- [Known limitations](docs/product/KNOWN_LIMITATIONS.md)
 
-## Production Notes
+## Security
 
-This is a factory-ready demo, not a hardened production deployment. Before production use:
+Before publishing or deploying, run:
 
-- Replace mock inference with trained factory model weights.
-- Run Alembic migrations against production databases.
-- Rotate every secret from `.env.example`.
-- Disable or restrict demo seed/reset endpoints.
-- Use trusted HTTPS certificates for tablets and factory laptops.
-- Add production audit exports and CI/CD gates.
+```powershell
+.\scripts\public-release-guard.ps1
+```
+
+The guard blocks tracked secrets, local runtime files, model weights, datasets
+and generated artifacts that should not be exposed publicly.

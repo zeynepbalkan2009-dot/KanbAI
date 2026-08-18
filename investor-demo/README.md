@@ -17,7 +17,7 @@ Then open `http://localhost:8080`.
 Open the repository in GitHub Codespaces. The dev container starts the demo on
 port `8080` and GitHub keeps forwarded ports private by default.
 
-See `docs/PRIVATE_GITHUB_DEMO.md` for the full flow.
+See `../docs/deployment/PRIVATE_GITHUB_DEMO.md` for the full flow.
 
 ## Sample images
 

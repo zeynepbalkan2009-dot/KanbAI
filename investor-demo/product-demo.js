@@ -32,6 +32,7 @@ const samples = [
     confidence: row[6],
     rootCause: row[7],
     box: sampleBox(id),
+    inScope: true,
     simulated: false
   };
 });
@@ -47,6 +48,7 @@ const elements = {
   timestamp: document.querySelector("#timestamp"),
   sourcePill: document.querySelector("#sourcePill"),
   inspect: document.querySelector("#inspect"),
+  aiCard: document.querySelector("#decisionTitle")?.closest(".decision-card"),
   decisionTitle: document.querySelector("#decisionTitle"),
   decisionBody: document.querySelector("#decisionBody"),
   confidenceValue: document.querySelector("#confidenceValue"),
@@ -56,6 +58,7 @@ const elements = {
   bbox: document.querySelector("#bbox"),
   bboxLabel: document.querySelector("#bboxLabel"),
   steps: Array.from(document.querySelectorAll("[data-step]")),
+  reviewButtons: Array.from(document.querySelectorAll("#confirm,#reject,#wrong")),
   hitlCard: document.querySelector("#hitlCard"),
   learnCard: document.querySelector("#learnCard"),
   reviewDecision: document.querySelector("#reviewDecision"),
@@ -123,8 +126,11 @@ function updatePreview(source = "Sample scan") {
   elements.station.textContent = selected.station;
   elements.material.textContent = selected.material;
   elements.timestamp.textContent = nowLabel();
-  elements.sourcePill.textContent = source;
-  elements.bboxLabel.textContent = `${selected.defect.toLowerCase()} - ${selected.confidence}%`;
+  elements.sourcePill.textContent = selected.inScope === false ? "Out of scope" : source;
+  elements.bboxLabel.textContent = selected.inScope === false
+    ? "outside inspection scope"
+    : `${selected.defect.toLowerCase()} - ${selected.confidence}%`;
+  elements.bbox.classList.toggle("is-hidden", selected.inScope === false || selected.inScope === null);
   placeBox(selected.box || sampleBox(1));
   elements.learnCard.hidden = true;
   elements.decisionTitle.textContent = "Waiting for inspection";
@@ -134,6 +140,10 @@ function updatePreview(source = "Sample scan") {
   elements.confidenceBar.style.width = "0%";
   elements.defectClass.textContent = "--";
   elements.rootCause.textContent = "--";
+  elements.reviewButtons.forEach((button) => {
+    button.disabled = false;
+  });
+  elements.inspect.textContent = selected.inScope === false ? "Review image scope" : "Run simulated inspection";
   elements.contactPanel.hidden = true;
   elements.pilotContact.textContent = "Discuss a real pilot";
   setStep("source");
@@ -148,6 +158,22 @@ function placeBox(box) {
 }
 
 function runInspection() {
+  if (selected.inScope === false) {
+    elements.decisionTitle.textContent = "OUT OF SCOPE";
+    elements.decisionTitle.className = "decision-out";
+    elements.decisionBody.textContent = "Industrial steel or metal part not detected. This demo refuses to score unrelated images.";
+    elements.confidenceValue.textContent = "--";
+    elements.confidenceBar.style.width = "0%";
+    elements.defectClass.textContent = "Not an industrial metal part";
+    elements.rootCause.textContent = "Use a steel beam, machined component, casting, bracket, rail or another metal inspection image.";
+    elements.reviewButtons.forEach((button) => {
+      button.disabled = true;
+    });
+    setStep("inspect");
+    elements.aiCard.scrollIntoView({behavior: "smooth", block: "center"});
+    return;
+  }
+
   const tone = selected.outcome.toLowerCase();
   elements.decisionTitle.textContent = selected.outcome;
   elements.decisionTitle.className = `decision-${tone}`;
@@ -165,6 +191,7 @@ function runInspection() {
 }
 
 function recordReview(label, copy) {
+  if (selected.inScope === false) return;
   verified += 1;
   queue += selected.outcome === "PASS" ? 0 : 1;
   elements.reviewDecision.textContent = label;
@@ -200,6 +227,9 @@ async function analyzeUploadedImage(url, fileName) {
   let dark = 0;
   let bright = 0;
   let saturation = 0;
+  let neutral = 0;
+  let colored = 0;
+  let midTone = 0;
 
   for (let i = 0, p = 0; i < pixels.length; i += 4, p += 1) {
     const r = pixels[i];
@@ -212,7 +242,11 @@ async function analyzeUploadedImage(url, fileName) {
     sum += value;
     if (value < 55) dark += 1;
     if (value > 210) bright += 1;
-    saturation += max === 0 ? 0 : (max - min) / max;
+    const sat = max === 0 ? 0 : (max - min) / max;
+    saturation += sat;
+    if (sat < 0.18 && value > 35 && value < 235) neutral += 1;
+    if (sat > 0.32 && value > 45) colored += 1;
+    if (value > 70 && value < 205) midTone += 1;
   }
 
   const total = gray.length;
@@ -255,7 +289,50 @@ async function analyzeUploadedImage(url, fileName) {
   const darkRatio = dark / total;
   const brightRatio = bright / total;
   const colorfulness = saturation / total;
+  const neutralRatio = neutral / total;
+  const coloredRatio = colored / total;
+  const midToneRatio = midTone / total;
   const name = fileName.toLowerCase();
+  const metalNameHint = /steel|metal|alum|aluminum|aluminium|iron|casting|cast|weld|beam|flange|gear|rail|bracket|bearing|housing|machined|part|component|sheet|plate|bolt|screw|pipe|tube|profile/.test(name);
+  const nonIndustrialNameHint = /screenshot|screen|diagram|chart|logo|presentation|slide|generated|loop|dashboard|website|web|ui|mockup|poster|person|face|animal|flower|landscape/.test(name);
+  const metalVisualScore =
+    neutralRatio * 0.52 +
+    clamp(contrast / 82, 0, 1) * 0.22 +
+    clamp(edgeDensity / 0.16, 0, 1) * 0.22 +
+    midToneRatio * 0.12 -
+    coloredRatio * 0.55 -
+    (darkRatio > 0.62 ? 0.22 : 0) -
+    (brightRatio > 0.72 ? 0.18 : 0);
+  const visuallyMetal =
+    metalVisualScore >= 0.48 &&
+    neutralRatio >= 0.46 &&
+    coloredRatio <= 0.2 &&
+    edgeDensity >= 0.025 &&
+    contrast >= 18 &&
+    midToneRatio >= 0.18;
+  const namedMetal =
+    metalNameHint &&
+    neutralRatio >= 0.32 &&
+    coloredRatio <= 0.34 &&
+    contrast >= 12;
+  const inScope = !nonIndustrialNameHint && (namedMetal || visuallyMetal);
+
+  if (!inScope) {
+    return {
+      id: 0,
+      file: url,
+      part: fileName.replace(/\.[^.]+$/, "") || "Uploaded image",
+      defect: "Not an industrial metal part",
+      station: "Manual upload / Scope gate",
+      material: "Out of KanbAI demo scope",
+      outcome: "OUT OF SCOPE",
+      confidence: null,
+      rootCause: "The demo only scores steel or metal inspection images. Use a machined component, casting, rail, bracket, beam or similar factory part.",
+      box: {left: 42, top: 28, width: 22, height: 30},
+      inScope: false,
+      simulated: true
+    };
+  }
 
   const hints = [
     [/crack|fracture|broken|fissure/, "Crack", "FAIL", "Likely fracture or discontinuity"],
@@ -308,6 +385,7 @@ async function analyzeUploadedImage(url, fileName) {
     confidence,
     rootCause,
     box,
+    inScope: true,
     simulated: true
   };
 }
@@ -338,10 +416,12 @@ elements.upload?.addEventListener("change", async (event) => {
     confidence: 67,
     rootCause: "Browser analysis in progress",
     box: {left: 42, top: 28, width: 22, height: 30},
+    inScope: null,
     simulated: true
   };
   updatePreview("Analyzing image");
   elements.inspect.disabled = true;
+  elements.inspect.textContent = "Analyzing image...";
   try {
     selected = await analyzeUploadedImage(objectUrl, file.name);
     updatePreview("Uploaded image analyzed");

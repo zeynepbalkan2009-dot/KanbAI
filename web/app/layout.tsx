@@ -5,7 +5,7 @@ import { QueryProvider } from "@/components/providers/QueryProvider";
 import { PWARegister } from "@/components/PWARegister";
 
 export const metadata: Metadata = {
-  title: "KanbAI",
+  title: "KanbAI | AI Quality Intelligence for Manufacturing",
   description: "Industrial AI quality control with continuous learning",
   manifest: "/manifest.webmanifest",
   appleWebApp: {

@@ -8,7 +8,7 @@ Target: Factory-ready, production-like demo for KanbAI Industrial AI Quality Con
 
 KanbAI is now running as a Docker Compose based factory demo with Backend, Web, PostgreSQL, Redis, MinIO, Celery workers, Flower, Nginx and the lightweight MLOps registry online. The demo was extended from a static/pitch surface into a more realistic factory pilot workspace: operator capture, device activation, inspection records, HITL review, continuous learning, investor view and a new Factory Digital Twin overview.
 
-The current build is suitable for ITU Cekirdek / TUBITAK BIGG / investor demo sessions and controlled factory trials. It is still a demo deployment, not a hardened production installation.
+The current build is suitable for investor demo sessions and controlled factory trial preparation. It is still a demo deployment, not a hardened production installation.
 
 ## Current Runtime Status
 
@@ -65,7 +65,7 @@ npm run build
 ## Completed Product Improvements
 
 - Added `Factory Overview` digital twin screen for line/station/device status, health signals and live inspection feed.
-- Added `Investor Demo` executive dashboard for YC/a16z style demo narrative, ROI metrics and demo flow.
+- Added `Investor Demo` executive dashboard for investor narrative, ROI metrics and demo flow.
 - Added `Factory Devices` CRM screen for tablet/camera pairing, activation token generation, device heartbeat and revoke flow.
 - Added `/activate-device` login-free tablet onboarding route.
 - Added PWA manifest, icon and service worker registration for tablet-friendly pilot use.

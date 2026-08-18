@@ -1,6 +1,6 @@
 # Demo Readiness Fixes
 
-This package was prepared from `kanbai.zip` for İTÜ Çekirdek BİGG demo readiness.
+This package was prepared from `kanbai.zip` for public investor demo readiness.
 
 ## Fixed
 
@@ -12,7 +12,7 @@ This package was prepared from `kanbai.zip` for İTÜ Çekirdek BİGG demo readi
 - Mounted root `mlops/` directory into backend/worker containers as `/app/mlops`.
 - Fixed SQLAlchemy reserved `metadata` attribute conflicts by mapping the DB column as `metadata_json`.
 - Fixed parameterized PostgreSQL interval expression in `/api/v1/mlops/demo/seed`.
-- Added README, İTÜ BİGG demo guide, and GitHub upload guide.
+- Added README, demo guide, and GitHub upload guide.
 
 ## Remaining demo assumptions
 
@@ -20,4 +20,3 @@ This package was prepared from `kanbai.zip` for İTÜ Çekirdek BİGG demo readi
 - Real YOLO model training requires actual dataset/model files.
 - Docker must be running locally.
 - For a clean DB seed, run on a fresh volume or reset with `docker compose down -v`.
-

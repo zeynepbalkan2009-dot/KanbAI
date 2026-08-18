@@ -9,6 +9,9 @@
 - Mock AI inference demo icin karar uretir.
 - HITL review dataset contribution kaydi olusturur.
 - Web dashboard build olur.
+- `PILOT_MODE=true` iken demo seed/reset endpointleri HTTP 403 doner.
+- Pilot startup otomatik demo data eklemez.
+- Ilk factory tenant ve admin, demo seed yerine kontrollu bootstrap ile olusturulur.
 
 ## Should Have
 - CSV export kalite ekibine verilebilir.
@@ -31,4 +34,22 @@ Beklenen sonuc:
 
 ```text
 KanbAI factory demo acceptance test passed.
+```
+
+## Pilot Mode Safety Validation
+
+Pilot kurulumunda destructive demo smoke testi calistirilmamalidir. Admin
+hesabi olusturulduktan sonra su non-destructive komutu calistirin:
+
+```powershell
+.\scripts\pilot-mode-smoke-test.ps1 `
+  -ApiBaseUrl 'https://pilot.example-factory.com' `
+  -Email 'qa.admin@example-factory.com' `
+  -Password '<admin-password>'
+```
+
+Beklenen sonuc:
+
+```text
+KanbAI pilot mode safety smoke test passed.
 ```

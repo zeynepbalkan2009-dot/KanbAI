@@ -1,0 +1,22 @@
+# Compose overlay for a controlled factory pilot.
+# Use after docker-compose.yml and docker-compose.https.yml. It removes direct
+# host exposure for internal services; tablets reach only the Nginx HTTPS proxy.
+services:
+  postgres:
+    ports: !reset []
+  redis:
+    ports: !reset []
+  minio:
+    ports: !reset []
+  api:
+    ports: !reset []
+  web:
+    ports: !reset []
+  flower:
+    ports: !reset []
+  mlflow:
+    ports: !reset []
+  nginx:
+    ports: !override
+      - "80:80"
+      - "443:443"

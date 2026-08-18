@@ -9,7 +9,7 @@ Industrial AI Quality Control Platform
 
 KanbAI is a production-like factory demo for AI visual inspection, human-in-the-loop validation and continuous learning. It is designed for factory pilots, ITU Cekirdek / TUBITAK BIGG demo sessions, YC-style accelerator reviews and enterprise sales conversations.
 
-## What This Demo Shows
+## What KanbAI Shows
 
 - Operator photo capture from tablet/laptop
 - AI defect inference with PASS / REVIEW / FAIL decisions
@@ -22,6 +22,16 @@ KanbAI is a production-like factory demo for AI visual inspection, human-in-the-
 - Investor / executive demo view
 
 The default mode is `AI_INFERENCE_MODE=mock` so the full workflow is stable without GPU or trained model weights. Real factory model weights can be added later.
+
+## Readiness at a Glance
+
+| Use case | Status | Evidence |
+| --- | --- | --- |
+| Investor / accelerator demo | Ready | Docker smoke test, executive dashboard, stable mock inference |
+| Controlled first factory pilot | Ready to configure | Explicit Pilot Mode, non-destructive safety test, tenant bootstrap runbook |
+| Production rollout | Not claimed | Requires validated model metrics, trusted TLS, backup/restore rehearsal, and security hardening |
+
+The project deliberately distinguishes a persuasive demo from a real-factory trial. See the [Controlled Factory Pilot Runbook](docs/PILOT_MODE_RUNBOOK.md) before placing it on a line.
 
 ## Stack
 
@@ -80,6 +90,15 @@ Run the full factory acceptance smoke test:
 This validates readiness, admin login, demo reset/seed, device activation, photo upload, AI inference, dashboard stats, HITL review, dataset contribution, MLOps registry, CSV export and HTTPS web routes.
 
 GitHub Actions also runs a Docker Compose demo smoke test on every push and pull request. The `Docker demo smoke test` job builds the stack, waits for API readiness, runs Alembic migrations, then executes `scripts/smoke-test.ps1` against the live services.
+
+The same CI job then restarts the live API with `PILOT_MODE=true`, verifies startup completes without demo seeding, and confirms both demo data endpoints return HTTP 403 through `scripts/pilot-mode-smoke-test.ps1`.
+
+## Controlled Factory Pilot
+
+Do not use demo credentials, demo reset/seed, or self-signed TLS as the factory trial configuration. Start with the [Pilot Mode Runbook](docs/PILOT_MODE_RUNBOOK.md), which covers secret rotation, tenant bootstrap, HTTPS/network boundaries, and a non-destructive acceptance check.
+
+For a controlled pilot, use `scripts/start-real-pilot.ps1`; it requires
+`PILOT_MODE=true` and `DEMO_MODE=false`, and publishes only Nginx ports 80/443.
 
 ## Real YOLOv8 Inference Opt-In
 

@@ -69,6 +69,11 @@ dl{display:grid;gap:10px;margin:0}
 dl div{display:grid;gap:3px;padding:12px;border-radius:12px;background:#f8fbfd}
 dt{color:var(--demo-muted);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
 dd{margin:0;font-size:14px;font-weight:800}
+.scope-guide{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.scope-guide[hidden]{display:none}
+.scope-guide div{padding:13px;border:1px solid var(--demo-line);border-radius:12px;background:#fbfcfd}
+.scope-guide span{display:block;margin-bottom:5px;color:#526577;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.scope-guide p{margin:0;color:var(--demo-muted);font-size:12px;line-height:1.45}
 .button-row{display:flex;flex-wrap:wrap;gap:8px}
 .button-row button:disabled{opacity:.45;cursor:not-allowed}
 .learning-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}
@@ -101,5 +106,5 @@ dd{margin:0;font-size:14px;font-weight:800}
   .demo-stepper{grid-template-columns:1fr}
   .sample-grid{grid-template-columns:repeat(2,1fr)}
   .viewer{min-height:300px}
-  .inspection-meta,.learning-stats{grid-template-columns:1fr}
+  .inspection-meta,.learning-stats,.scope-guide{grid-template-columns:1fr}
 }

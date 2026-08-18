@@ -55,6 +55,7 @@ const elements = {
   confidenceBar: document.querySelector("#confidenceBar"),
   defectClass: document.querySelector("#defectClass"),
   rootCause: document.querySelector("#rootCause"),
+  scopeGuide: document.querySelector("#scopeGuide"),
   bbox: document.querySelector("#bbox"),
   bboxLabel: document.querySelector("#bboxLabel"),
   steps: Array.from(document.querySelectorAll("[data-step]")),
@@ -140,6 +141,7 @@ function updatePreview(source = "Sample scan") {
   elements.confidenceBar.style.width = "0%";
   elements.defectClass.textContent = "--";
   elements.rootCause.textContent = "--";
+  elements.scopeGuide.hidden = true;
   elements.reviewButtons.forEach((button) => {
     button.disabled = false;
   });
@@ -166,6 +168,7 @@ function runInspection() {
     elements.confidenceBar.style.width = "0%";
     elements.defectClass.textContent = "Not an industrial metal part";
     elements.rootCause.textContent = "Use a steel beam, machined component, casting, bracket, rail or another metal inspection image.";
+    elements.scopeGuide.hidden = false;
     elements.reviewButtons.forEach((button) => {
       button.disabled = true;
     });
@@ -186,6 +189,7 @@ function runInspection() {
   elements.confidenceBar.style.width = `${selected.confidence}%`;
   elements.defectClass.textContent = selected.defect;
   elements.rootCause.textContent = selected.rootCause;
+  elements.scopeGuide.hidden = true;
   setStep("review");
   elements.hitlCard.scrollIntoView({behavior: "smooth", block: "center"});
 }

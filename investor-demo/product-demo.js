@@ -50,6 +50,7 @@ const elements = {
   rootCause: document.querySelector("#rootCause"),
   bbox: document.querySelector("#bbox"),
   bboxLabel: document.querySelector("#bboxLabel"),
+  steps: Array.from(document.querySelectorAll("[data-step]")),
   hitlCard: document.querySelector("#hitlCard"),
   learnCard: document.querySelector("#learnCard"),
   reviewDecision: document.querySelector("#reviewDecision"),
@@ -62,6 +63,16 @@ let selected = samples[0];
 let objectUrl = null;
 let verified = 249;
 let queue = 18;
+const stepOrder = ["source", "inspect", "review", "learn"];
+
+function setStep(activeStep) {
+  const activeIndex = stepOrder.indexOf(activeStep);
+  elements.steps.forEach((step) => {
+    const index = stepOrder.indexOf(step.dataset.step);
+    step.classList.toggle("active", index === activeIndex);
+    step.classList.toggle("done", index > -1 && index < activeIndex);
+  });
+}
 
 function nowLabel() {
   return new Intl.DateTimeFormat("en-GB", {
@@ -99,6 +110,7 @@ function updatePreview(source = "Sample scan") {
   elements.confidenceBar.style.width = "0%";
   elements.defectClass.textContent = "--";
   elements.rootCause.textContent = "--";
+  setStep("source");
   renderSamples();
 }
 
@@ -113,6 +125,7 @@ function runInspection() {
   elements.confidenceBar.style.width = `${selected.confidence}%`;
   elements.defectClass.textContent = selected.defect;
   elements.rootCause.textContent = selected.rootCause;
+  setStep("review");
   elements.hitlCard.scrollIntoView({behavior: "smooth", block: "center"});
 }
 
@@ -124,6 +137,7 @@ function recordReview(label, copy) {
   elements.verifiedCount.textContent = verified;
   elements.queueCount.textContent = queue;
   elements.learnCard.hidden = false;
+  setStep("learn");
   elements.learnCard.scrollIntoView({behavior: "smooth", block: "center"});
 }
 

@@ -28,6 +28,13 @@
       </div>
     </section>
 
+    <nav class="demo-stepper" aria-label="Inspection workflow progress">
+      <span class="active" data-step="source"><b>01</b> Image source</span>
+      <span data-step="inspect"><b>02</b> AI inspection</span>
+      <span data-step="review"><b>03</b> Human review</span>
+      <span data-step="learn"><b>04</b> Learning queue</span>
+    </nav>
+
     <section class="workspace">
       <aside class="sample-panel">
         <div class="panel-heading">
@@ -37,8 +44,10 @@
         <label class="upload-card" for="upload">
           <span>Upload image</span>
           <strong>Use a local JPG, PNG, WEBP or SVG</strong>
+          <small>This file stays in your browser and is not uploaded in the private static demo.</small>
           <input id="upload" type="file" accept="image/*">
         </label>
+        <p class="source-note">Use the built-in sample pack for a fast pitch flow, or test with a downloaded open-source inspection image.</p>
         <div class="sample-toolbar">
           <span>Factory sample pack</span>
           <button id="reset" type="button">Reset</button>

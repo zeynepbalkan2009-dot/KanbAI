@@ -107,6 +107,13 @@ from the same public HTTPS domain. The deployable, isolated demo stack is
 documented in [Public Investor Demo Deployment](docs/PUBLIC_DEMO_DEPLOYMENT.md).
 It uses mock inference and must never receive real factory data.
 
+## Free Investor Demo
+
+GitHub Pages deploys the static [investor demo](investor-demo/index.html) on
+each change to `main`. It is an interactive simulation: no login, factory
+image, live AI, or backend data is processed. After Pages is enabled, share
+`https://zeynepbalkan2009-dot.github.io/KanbAI/` with investors.
+
 ## Real YOLOv8 Inference Opt-In
 
 The stable demo and CI path intentionally run with:

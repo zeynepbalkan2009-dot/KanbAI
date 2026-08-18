@@ -69,7 +69,9 @@ const elements = {
   verifiedCount: document.querySelector("#verifiedCount"),
   queueCount: document.querySelector("#queueCount"),
   pilotContact: document.querySelector("#pilotContact"),
-  contactPanel: document.querySelector("#contactPanel")
+  contactPanel: document.querySelector("#contactPanel"),
+  pitchStart: document.querySelector("#pitchStart"),
+  copyDemoLink: document.querySelector("#copyDemoLink")
 };
 
 let selected = samples[0];
@@ -120,6 +122,14 @@ function renderSamples() {
       <span>${String(sample.id).padStart(2, "0")} - ${sample.part}</span>
     </button>
   `).join("");
+}
+
+function selectSample(id, source = "Sample scan") {
+  selected = samples.find((sample) => sample.id === id) || samples[0];
+  if (objectUrl) URL.revokeObjectURL(objectUrl);
+  objectUrl = null;
+  elements.upload.value = "";
+  updatePreview(source);
 }
 
 function updatePreview(source = "Sample scan") {
@@ -437,10 +447,7 @@ elements.grid?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-id]");
   if (!button) return;
   const id = Number(button.dataset.id);
-  selected = samples.find((sample) => sample.id === id) || samples[0];
-  if (objectUrl) URL.revokeObjectURL(objectUrl);
-  objectUrl = null;
-  updatePreview("Sample scan");
+  selectSample(id, "Sample scan");
 });
 
 elements.upload?.addEventListener("change", async (event) => {
@@ -478,11 +485,7 @@ elements.upload?.addEventListener("change", async (event) => {
 });
 
 elements.reset?.addEventListener("click", () => {
-  selected = samples[0];
-  if (objectUrl) URL.revokeObjectURL(objectUrl);
-  objectUrl = null;
-  elements.upload.value = "";
-  updatePreview("Sample scan");
+  selectSample(1, "Sample scan");
 });
 
 elements.inspect?.addEventListener("click", runInspection);
@@ -499,5 +502,31 @@ elements.pilotContact?.addEventListener("click", async () => {
   }
 });
 
+elements.pitchStart?.addEventListener("click", () => {
+  selectSample(2, "Pitch sample");
+  elements.inspect.scrollIntoView({behavior: "smooth", block: "center"});
+  elements.pitchStart.textContent = "Pitch sample loaded";
+});
+
+elements.copyDemoLink?.addEventListener("click", async () => {
+  const sampleId = selected.id || 2;
+  const url = `${window.location.origin}${window.location.pathname}?sample=${sampleId}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    elements.copyDemoLink.textContent = "Link copied";
+  } catch {
+    elements.copyDemoLink.textContent = "Copy unavailable";
+  }
+});
+
+function bootFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const sampleId = Number(params.get("sample"));
+  if (Number.isInteger(sampleId) && sampleId >= 1 && sampleId <= samples.length) {
+    selected = samples[sampleId - 1];
+  }
+}
+
+bootFromUrl();
 renderSamples();
 updatePreview();

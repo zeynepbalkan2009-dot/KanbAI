@@ -46,6 +46,23 @@
       <p>This GitHub Pages version runs as a static product walkthrough. It does not call KanbAI backend services, store uploaded files or accept real factory data.</p>
     </section>
 
+    <section class="demo-presenter-panel" aria-label="Investor demo guide">
+      <div>
+        <p class="eyebrow">INVESTOR PITCH MODE</p>
+        <h2>Show the wedge, then show the learning loop.</h2>
+      </div>
+      <ol>
+        <li><b>Capture</b><span>Start with a metal part image from the factory sample pack.</span></li>
+        <li><b>AI triage</b><span>Show PASS / REVIEW / FAIL and confidence with a visible region.</span></li>
+        <li><b>Human validation</b><span>Approve, reject or correct the prediction before release.</span></li>
+        <li><b>Dataset growth</b><span>Turn the verified inspection into retraining data.</span></li>
+      </ol>
+      <div class="presenter-actions">
+        <button class="btn btn-primary" id="pitchStart" type="button">Load pitch sample</button>
+        <button class="btn btn-secondary" id="copyDemoLink" type="button">Copy demo link</button>
+      </div>
+    </section>
+
     <nav class="demo-stepper" aria-label="Inspection workflow progress">
       <span class="active" data-step="source"><b>01</b> Image source</span>
       <span data-step="inspect"><b>02</b> AI inspection</span>

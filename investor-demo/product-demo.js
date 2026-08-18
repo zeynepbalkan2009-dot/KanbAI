@@ -234,6 +234,9 @@ async function analyzeUploadedImage(url, fileName) {
   let foregroundNeutral = 0;
   let foregroundColored = 0;
   let foregroundMidTone = 0;
+  let foregroundWarm = 0;
+  let foregroundDarkMetal = 0;
+  let foregroundCoolNeutral = 0;
 
   for (let i = 0, p = 0; i < pixels.length; i += 4, p += 1) {
     const r = pixels[i];
@@ -256,6 +259,9 @@ async function analyzeUploadedImage(url, fileName) {
       if (sat < 0.24 && value > 24 && value < 230) foregroundNeutral += 1;
       if (sat > 0.38 && value > 45) foregroundColored += 1;
       if (value > 45 && value < 215) foregroundMidTone += 1;
+      if (r > g * 1.07 && g > b * 1.06 && sat > 0.16 && value > 85) foregroundWarm += 1;
+      if (value < 150 && sat < 0.36) foregroundDarkMetal += 1;
+      if (Math.abs(r - g) < 28 && Math.abs(g - b) < 28 && value > 45 && value < 205) foregroundCoolNeutral += 1;
     }
   }
 
@@ -306,33 +312,45 @@ async function analyzeUploadedImage(url, fileName) {
   const foregroundNeutralRatio = foreground === 0 ? 0 : foregroundNeutral / foreground;
   const foregroundColoredRatio = foreground === 0 ? 0 : foregroundColored / foreground;
   const foregroundMidToneRatio = foreground === 0 ? 0 : foregroundMidTone / foreground;
+  const foregroundWarmRatio = foreground === 0 ? 0 : foregroundWarm / foreground;
+  const foregroundDarkMetalRatio = foreground === 0 ? 0 : foregroundDarkMetal / foreground;
+  const foregroundCoolNeutralRatio = foreground === 0 ? 0 : foregroundCoolNeutral / foreground;
   const name = fileName.toLowerCase();
   const metalNameHint = /steel|steal|corten|metal|alum|aluminum|aluminium|iron|casting|cast|weld|beam|flange|gear|rail|bracket|bearing|housing|machined|part|component|sheet|plate|bolt|screw|pipe|tube|profile/.test(name);
-  const nonIndustrialNameHint = /screenshot|screen|diagram|chart|logo|presentation|slide|generated|loop|dashboard|website|web|ui|mockup|poster|person|face|animal|flower|landscape/.test(name);
+  const nonIndustrialNameHint = /wood|timber|lumber|plywood|screenshot|screen|diagram|chart|logo|presentation|slide|generated|loop|dashboard|website|web|ui|mockup|poster|person|face|animal|flower|landscape/.test(name);
+  const woodLike =
+    foregroundRatio >= 0.08 &&
+    foregroundWarmRatio >= 0.34 &&
+    foregroundDarkMetalRatio <= 0.28 &&
+    foregroundCoolNeutralRatio <= 0.38;
   const metalVisualScore =
     neutralRatio * 0.52 +
     foregroundNeutralRatio * 0.36 +
+    foregroundDarkMetalRatio * 0.34 +
+    foregroundCoolNeutralRatio * 0.24 +
     clamp(contrast / 82, 0, 1) * 0.22 +
     clamp(edgeDensity / 0.16, 0, 1) * 0.22 +
     midToneRatio * 0.08 +
     foregroundMidToneRatio * 0.12 -
     coloredRatio * 0.55 -
     foregroundColoredRatio * 0.18 -
+    foregroundWarmRatio * 0.42 -
     (darkRatio > 0.62 ? 0.22 : 0) -
     (brightRatio > 0.72 ? 0.18 : 0);
   const visuallyMetal =
     metalVisualScore >= 0.5 &&
     foregroundRatio >= 0.08 &&
-    foregroundNeutralRatio >= 0.5 &&
-    foregroundColoredRatio <= 0.28 &&
+    !woodLike &&
+    (foregroundNeutralRatio >= 0.45 || foregroundDarkMetalRatio >= 0.38 || foregroundCoolNeutralRatio >= 0.42) &&
+    foregroundColoredRatio <= 0.34 &&
     edgeDensity >= 0.025 &&
     contrast >= 14;
   const namedMetal =
     metalNameHint &&
+    !woodLike &&
     foregroundRatio >= 0.04 &&
-    foregroundColoredRatio <= 0.68 &&
     contrast >= 6 &&
-    (foregroundNeutralRatio >= 0.22 || foregroundMidToneRatio >= 0.28 || edgeDensity >= 0.018);
+    (foregroundNeutralRatio >= 0.3 || foregroundDarkMetalRatio >= 0.3 || foregroundCoolNeutralRatio >= 0.3);
   const inScope = !nonIndustrialNameHint && (namedMetal || visuallyMetal);
 
   if (!inScope) {

@@ -107,12 +107,14 @@ from the same public HTTPS domain. The deployable, isolated demo stack is
 documented in [Public Investor Demo Deployment](docs/PUBLIC_DEMO_DEPLOYMENT.md).
 It uses mock inference and must never receive real factory data.
 
-## Free Investor Demo
+## Private GitHub Demo
 
-GitHub Pages deploys the static [investor demo](investor-demo/index.html) on
-each change to `main`. It is an interactive simulation: no login, factory
-image, live AI, or backend data is processed. After Pages is enabled, share
-`https://zeynepbalkan2009-dot.github.io/KanbAI/` with investors.
+For GitHub-only review without publishing a public site, use the static
+[investor demo](investor-demo/index.html) through GitHub Codespaces. The
+dev container serves it on port `8080`, and Codespaces forwarded ports are
+private by default. See [Private GitHub Demo](docs/PRIVATE_GITHUB_DEMO.md).
+
+GitHub Pages deployment remains manual-only because a Pages site is public.
 
 ## Real YOLOv8 Inference Opt-In
 

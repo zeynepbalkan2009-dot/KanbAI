@@ -1,13 +1,19 @@
-name: Deploy free investor demo
+name: Deploy public investor demo
+
 on:
-  push:
-    branches: [main]
-    paths: ["investor-demo/**", ".github/workflows/deploy-investor-demo.yml"]
   workflow_dispatch:
+    inputs:
+      confirm_public_site:
+        description: "Type PUBLISH_PUBLIC_DEMO to confirm this deploys a public GitHub Pages site."
+        required: true
+        type: string
+
 permissions: {contents: read, pages: write, id-token: write}
 concurrency: {group: pages, cancel-in-progress: false}
+
 jobs:
   deploy:
+    if: ${{ inputs.confirm_public_site == 'PUBLISH_PUBLIC_DEMO' }}
     environment: {name: github-pages, url: "${{ steps.deployment.outputs.page_url }}"}
     runs-on: ubuntu-latest
     steps:

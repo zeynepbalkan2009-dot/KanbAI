@@ -1,6 +1,6 @@
-# KanbAI landing page — v1
+# KanbAI private investor demo
 
-A responsive, dependency-free prototype based on the approved white / cyan visual direction.
+An interactive, dependency-free investor demo for GitHub-only review.
 
 ## Run locally
 
@@ -11,6 +11,13 @@ python -m http.server 8080
 ```
 
 Then open `http://localhost:8080`.
+
+## Run privately on GitHub
+
+Open the repository in GitHub Codespaces. The dev container starts the demo on
+port `8080` and GitHub keeps forwarded ports private by default.
+
+See `docs/PRIVATE_GITHUB_DEMO.md` for the full flow.
 
 ## Before production
 

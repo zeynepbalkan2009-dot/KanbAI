@@ -1,0 +1,64 @@
+name: Private investor demo artifact
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "investor-demo/**"
+      - ".github/workflows/private-investor-demo.yml"
+      - ".devcontainer/**"
+      - "docs/PRIVATE_GITHUB_DEMO.md"
+  pull_request:
+    branches: [main]
+    paths:
+      - "investor-demo/**"
+      - ".github/workflows/private-investor-demo.yml"
+      - ".devcontainer/**"
+      - "docs/PRIVATE_GITHUB_DEMO.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Validate and package private static demo
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate static JavaScript
+        run: |
+          node --check investor-demo/script.js
+          node --check investor-demo/product-demo.js
+
+      - name: Validate required demo files
+        shell: pwsh
+        run: |
+          $required = @(
+            "investor-demo/index.html",
+            "investor-demo/styles.css",
+            "investor-demo/script.js",
+            "investor-demo/product-demo.html",
+            "investor-demo/product-demo.css",
+            "investor-demo/product-demo.js",
+            "investor-demo/assets/hero-factory.png",
+            "investor-demo/assets/factory-line.png"
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path $path)) {
+              throw "Missing required private demo file: $path"
+            }
+          }
+
+      - name: Upload private demo artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kanbai-private-investor-demo
+          path: investor-demo
+          if-no-files-found: error

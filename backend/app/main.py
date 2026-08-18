@@ -166,13 +166,19 @@ async def lifespan(app: FastAPI):
         "app_startup",
         env=settings.app_env,
         inference_mode=settings.ai_inference_mode,
+        demo_mode=settings.demo_mode,
+        pilot_mode=settings.pilot_mode,
         version=settings.app_version,
     )
     # Create tables (dev only — use Alembic in production)
     if settings.is_development:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-            await seed_demo_data(conn)
+            if settings.demo_seed_enabled:
+                await seed_demo_data(conn)
+                logger.info("demo_seeded_on_startup")
+            elif settings.pilot_mode:
+                logger.info("demo_seed_skipped_for_pilot_mode")
         logger.info("db_tables_created")
 
     yield

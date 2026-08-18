@@ -81,6 +81,23 @@ This validates readiness, admin login, demo reset/seed, device activation, photo
 
 GitHub Actions also runs a Docker Compose demo smoke test on every push and pull request. The `Docker demo smoke test` job builds the stack, waits for API readiness, runs Alembic migrations, then executes `scripts/smoke-test.ps1` against the live services.
 
+## Real YOLOv8 Inference Opt-In
+
+The stable demo and CI path intentionally run with:
+
+```text
+AI_INFERENCE_MODE=mock
+```
+
+For a factory pilot with trained weights, install the full backend dependency set from `backend/requirements.txt`, place the model under `backend/models/best.pt` or mount another `.pt` file, then set:
+
+```text
+AI_INFERENCE_MODE=yolo
+YOLO_MODEL_PATH=models/best.pt
+```
+
+In YOLO mode the Celery inference worker downloads uploaded inspection images from MinIO into a temporary local file before running Ultralytics YOLOv8. Mock mode and the GitHub Actions smoke test are unchanged, so the acceptance demo remains deterministic without GPU or model weights.
+
 ## Database Migrations
 
 For a fresh PostgreSQL database, run:

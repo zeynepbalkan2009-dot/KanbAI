@@ -14,8 +14,11 @@ picks it up and forwards to all connected tenant clients.
 
 import asyncio
 import json
+import os
+import tempfile
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 from celery import Task
 from celery.utils.log import get_task_logger
@@ -46,6 +49,61 @@ def _publish_redis_event(tenant_id: str, event: dict) -> None:
     channel = f"ws:tenant:{tenant_id}"
     r.publish(channel, json.dumps(event, default=str))
     r.close()
+
+
+def _object_key_from_image_path(image_path: str) -> str:
+    """Convert persisted MinIO-style image paths to an object key."""
+    image_key = (image_path or "").strip().lstrip("/")
+    bucket_prefix = f"{settings.minio_bucket_inspections}/"
+    if image_key.startswith(bucket_prefix):
+        image_key = image_key[len(bucket_prefix):]
+    return image_key
+
+
+def _prepare_inference_image_path(inspection, image_path: str) -> tuple[str, str | None]:
+    """
+    YOLO needs a local file path. Uploaded inspections are persisted in MinIO,
+    so opt-in real inference downloads the object to a temporary worker file.
+    """
+    if settings.ai_inference_mode != "yolo":
+        return image_path, None
+
+    if image_path and Path(image_path).exists():
+        return image_path, None
+
+    object_key = getattr(inspection, "image_key", None) or _object_key_from_image_path(image_path)
+    if not object_key:
+        raise FileNotFoundError("Cannot resolve inspection image object key for YOLO inference")
+
+    suffix = Path(object_key).suffix or ".jpg"
+    temp_file = tempfile.NamedTemporaryFile(
+        prefix="kanbai-inference-",
+        suffix=suffix,
+        delete=False,
+    )
+    temp_path = temp_file.name
+    temp_file.close()
+
+    try:
+        from app.infrastructure.storage.minio_client import get_minio_client
+        client = get_minio_client()
+        client.fget_object(settings.minio_bucket_inspections, object_key, temp_path)
+        logger.info(f"[inference] downloaded image object={object_key} path={temp_path}")
+        return temp_path, temp_path
+    except Exception:
+        _cleanup_temp_file(temp_path)
+        raise
+
+
+def _cleanup_temp_file(path: str | None) -> None:
+    if not path:
+        return
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+    except Exception as exc:
+        logger.warning(f"[inference] temp cleanup failed path={path} error={exc}")
 
 
 def _demo_failure_result():
@@ -103,11 +161,15 @@ def run_inspection(self: Task, inspection_id: str, image_path: str, tenant_id: s
             result = _demo_failure_result()
         else:
             service = create_inference_service()
+            local_image_path, cleanup_path = _prepare_inference_image_path(inspection, image_path)
 
             # Run async inference in sync context
             loop = asyncio.new_event_loop()
-            result = loop.run_until_complete(service.analyze(image_path))
-            loop.close()
+            try:
+                result = loop.run_until_complete(service.analyze(local_image_path))
+            finally:
+                loop.close()
+                _cleanup_temp_file(cleanup_path)
 
         # Persist result
         db.execute(

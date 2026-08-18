@@ -71,6 +71,13 @@ class Settings(BaseSettings):
 
     # Demo controls
     demo_mode: bool = False
+    # Pilot deployments use real factory data and must never create or reset demo data.
+    pilot_mode: bool = False
+
+    @property
+    def demo_seed_enabled(self) -> bool:
+        """Whether startup may insert the baseline demo data."""
+        return self.demo_mode and not self.pilot_mode
 
     @property
     def is_development(self) -> bool:

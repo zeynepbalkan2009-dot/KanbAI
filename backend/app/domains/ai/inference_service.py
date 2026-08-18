@@ -12,6 +12,7 @@ import asyncio
 import random
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional, Protocol
 
 from app.core.config import get_settings
@@ -162,8 +163,21 @@ class YOLOInferenceService:
     """
 
     def __init__(self, model_path: str):
-        # Lazy import — don't load ultralytics if not needed
-        from ultralytics import YOLO  # type: ignore
+        model_file = Path(model_path)
+        if not model_file.exists():
+            raise FileNotFoundError(
+                f"YOLO model file not found: {model_path}. "
+                "Set YOLO_MODEL_PATH to a mounted .pt file or place best.pt under backend/models/."
+            )
+
+        try:
+            from ultralytics import YOLO  # type: ignore
+        except ImportError as exc:
+            raise RuntimeError(
+                "AI_INFERENCE_MODE=yolo requires the optional ultralytics dependency. "
+                "Use the full backend requirements or install ultralytics in the worker image."
+            ) from exc
+
         self._model = YOLO(model_path)
         self._version = self._extract_version(model_path)
         logger.info("yolo_model_loaded", path=model_path, version=self._version)

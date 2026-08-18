@@ -309,10 +309,10 @@ async def _table_exists(db: AsyncSession, table_name: str) -> bool:
 
 
 def _require_demo_mode() -> None:
-    if settings.is_production or not settings.demo_mode:
+    if settings.is_production or settings.pilot_mode or not settings.demo_mode:
         raise HTTPException(
             status_code=403,
-            detail="Demo reset/seed endpoints are disabled outside explicit demo mode.",
+            detail="Demo reset/seed endpoints are disabled outside explicit demo mode and in pilot mode.",
         )
 
 

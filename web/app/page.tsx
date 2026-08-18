@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
-const pilotMailto = "mailto:hello@kanbai.ai?subject=KanbAI%20Factory%20Pilot";
-const investorMailto = "mailto:investors@kanbai.ai?subject=KanbAI%20Investor%20Intro";
+const pilotMailto = "mailto:zeynep.balkan2009@gmail.com?subject=KanbAI%20Factory%20Pilot";
+const investorMailto = "mailto:zeynep.balkan2009@gmail.com?subject=KanbAI%20Investor%20Intro";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);

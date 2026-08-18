@@ -33,6 +33,7 @@ const samples = [
     rootCause: row[7],
     box: sampleBox(id),
     inScope: true,
+    scopeStatus: "Factory sample pack",
     simulated: false
   };
 });
@@ -54,6 +55,7 @@ const elements = {
   confidenceValue: document.querySelector("#confidenceValue"),
   confidenceBar: document.querySelector("#confidenceBar"),
   defectClass: document.querySelector("#defectClass"),
+  scopeStatus: document.querySelector("#scopeStatus"),
   rootCause: document.querySelector("#rootCause"),
   scopeGuide: document.querySelector("#scopeGuide"),
   bbox: document.querySelector("#bbox"),
@@ -140,6 +142,7 @@ function updatePreview(source = "Sample scan") {
   elements.confidenceValue.textContent = "--";
   elements.confidenceBar.style.width = "0%";
   elements.defectClass.textContent = "--";
+  elements.scopeStatus.textContent = selected.scopeStatus || "--";
   elements.rootCause.textContent = "--";
   elements.scopeGuide.hidden = true;
   elements.reviewButtons.forEach((button) => {
@@ -167,6 +170,7 @@ function runInspection() {
     elements.confidenceValue.textContent = "--";
     elements.confidenceBar.style.width = "0%";
     elements.defectClass.textContent = "Not an industrial metal part";
+    elements.scopeStatus.textContent = selected.scopeStatus || "Rejected before scoring";
     elements.rootCause.textContent = "Use a steel beam, machined component, casting, bracket, rail or another metal inspection image.";
     elements.scopeGuide.hidden = false;
     elements.reviewButtons.forEach((button) => {
@@ -188,6 +192,7 @@ function runInspection() {
   elements.confidenceValue.textContent = `${selected.confidence}%`;
   elements.confidenceBar.style.width = `${selected.confidence}%`;
   elements.defectClass.textContent = selected.defect;
+  elements.scopeStatus.textContent = selected.scopeStatus || "Accepted inspection image";
   elements.rootCause.textContent = selected.rootCause;
   elements.scopeGuide.hidden = true;
   setStep("review");
@@ -320,13 +325,13 @@ async function analyzeUploadedImage(url, fileName) {
   const foregroundDarkMetalRatio = foreground === 0 ? 0 : foregroundDarkMetal / foreground;
   const foregroundCoolNeutralRatio = foreground === 0 ? 0 : foregroundCoolNeutral / foreground;
   const name = fileName.toLowerCase();
-  const metalNameHint = /steel|steal|corten|metal|alum|aluminum|aluminium|iron|casting|cast|weld|beam|flange|gear|rail|bracket|bearing|housing|machined|part|component|sheet|plate|bolt|screw|pipe|tube|profile/.test(name);
-  const nonIndustrialNameHint = /wood|timber|lumber|plywood|screenshot|screen|diagram|chart|logo|presentation|slide|generated|loop|dashboard|website|web|ui|mockup|poster|person|face|animal|flower|landscape/.test(name);
   const woodLike =
     foregroundRatio >= 0.08 &&
     foregroundWarmRatio >= 0.34 &&
     foregroundDarkMetalRatio <= 0.28 &&
     foregroundCoolNeutralRatio <= 0.38;
+  const darkInterfaceLike = darkRatio > 0.56 && brightRatio < 0.12 && foregroundColoredRatio > 0.06;
+  const graphicLike = foregroundColoredRatio > 0.31 || coloredRatio > 0.24;
   const metalVisualScore =
     neutralRatio * 0.52 +
     foregroundNeutralRatio * 0.36 +
@@ -345,17 +350,13 @@ async function analyzeUploadedImage(url, fileName) {
     metalVisualScore >= 0.5 &&
     foregroundRatio >= 0.08 &&
     !woodLike &&
+    !darkInterfaceLike &&
+    !graphicLike &&
     (foregroundNeutralRatio >= 0.45 || foregroundDarkMetalRatio >= 0.38 || foregroundCoolNeutralRatio >= 0.42) &&
     foregroundColoredRatio <= 0.34 &&
     edgeDensity >= 0.025 &&
     contrast >= 14;
-  const namedMetal =
-    metalNameHint &&
-    !woodLike &&
-    foregroundRatio >= 0.04 &&
-    contrast >= 6 &&
-    (foregroundNeutralRatio >= 0.3 || foregroundDarkMetalRatio >= 0.3 || foregroundCoolNeutralRatio >= 0.3);
-  const inScope = !nonIndustrialNameHint && (namedMetal || visuallyMetal);
+  const inScope = visuallyMetal;
 
   if (!inScope) {
     return {
@@ -370,6 +371,7 @@ async function analyzeUploadedImage(url, fileName) {
       rootCause: "The demo only scores steel or metal inspection images. Use a machined component, casting, rail, bracket, beam or similar factory part.",
       box: {left: 42, top: 28, width: 22, height: 30},
       inScope: false,
+      scopeStatus: "Rejected by browser visual gate",
       simulated: true
     };
   }
@@ -426,6 +428,7 @@ async function analyzeUploadedImage(url, fileName) {
     rootCause,
     box,
     inScope: true,
+    scopeStatus: "Accepted by browser visual gate",
     simulated: true
   };
 }
@@ -457,6 +460,7 @@ elements.upload?.addEventListener("change", async (event) => {
     rootCause: "Browser analysis in progress",
     box: {left: 42, top: 28, width: 22, height: 30},
     inScope: null,
+    scopeStatus: "Analyzing local image",
     simulated: true
   };
   updatePreview("Analyzing image");

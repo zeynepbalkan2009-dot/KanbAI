@@ -62,7 +62,7 @@
         <label class="upload-card" for="upload">
           <span>Upload image</span>
           <strong>Use a local JPG, PNG, WEBP or SVG</strong>
-          <small>This file stays in your browser. Only steel or metal inspection images are scored in this public static demo.</small>
+          <small>This file stays in your browser. The scope gate uses local pixel analysis, not the file name.</small>
           <input id="upload" type="file" accept="image/*">
         </label>
         <p class="source-note">Use the built-in sample pack for a fast pitch flow, or test with a downloaded open-source inspection image.</p>
@@ -110,6 +110,7 @@
           <div class="bar"><span id="confidenceBar"></span></div>
           <dl>
             <div><dt>Defect class</dt><dd id="defectClass">--</dd></div>
+            <div><dt>Scope gate</dt><dd id="scopeStatus">--</dd></div>
             <div><dt>Suggested root cause</dt><dd id="rootCause">--</dd></div>
           </dl>
           <div class="scope-guide" id="scopeGuide" hidden>
@@ -119,7 +120,7 @@
             </div>
             <div>
               <span>Rejected examples</span>
-              <p>Wood, screenshots, diagrams, logos, presentation slides, UI mockups, landscapes.</p>
+              <p>Wood, screenshots, diagrams, logos, presentation slides, UI mockups, landscapes. File names are ignored.</p>
             </div>
           </div>
         </div>

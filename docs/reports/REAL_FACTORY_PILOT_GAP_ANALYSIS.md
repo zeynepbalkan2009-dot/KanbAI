@@ -74,7 +74,7 @@ The repository proves these components exist and are wired:
 These are useful for investor/factory demos but should not be mistaken for production or real-model capability:
 
 - Baseline demo users and factory data are inserted in `backend/app/main.py` when `APP_ENV=development`.
-- Login page defaults to `admin@demo.com`.
+- Login page currently pre-fills a local demo account for faster validation.
 - `scripts/smoke-test.ps1` intentionally uses demo credentials and demo seed/reset.
 - Inference is mock by default and includes deterministic demo behavior for `KANBAI-DEMO*` serials or `FACTORY-PILOT*` lots.
 - MLOps endpoints return mock model, HITL, drift, and dataset data when backing MLOps artifacts are unavailable.

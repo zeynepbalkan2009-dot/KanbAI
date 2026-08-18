@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests">
+  <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=()">
   <title>KanbAI Interactive Demo</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="product-demo.css">
@@ -12,7 +15,7 @@
   <main class="demo-shell">
     <header class="demo-header">
       <a class="brand" href="index.html"><span>Kanb</span><b>AI</b></a>
-      <span>PUBLIC SAFE SIMULATION - No factory data</span>
+      <span>PUBLIC STATIC DEMO - No factory data</span>
       <a class="btn btn-secondary" href="index.html">Website</a>
     </header>
 
@@ -35,6 +38,14 @@
       <div><b>Real pilot path</b><span>Replace mock scoring with factory-approved model, HTTPS tenant isolation and measured baseline.</span></div>
     </section>
 
+    <section class="demo-security-panel" aria-label="Public demo safety status">
+      <div>
+        <span>Public demo safety</span>
+        <b>Uploads stay inside this browser session.</b>
+      </div>
+      <p>This GitHub Pages version runs as a static product walkthrough. It does not call KanbAI backend services, store uploaded files or accept real factory data.</p>
+    </section>
+
     <nav class="demo-stepper" aria-label="Inspection workflow progress">
       <span class="active" data-step="source"><b>01</b> Image source</span>
       <span data-step="inspect"><b>02</b> AI inspection</span>
@@ -51,7 +62,7 @@
         <label class="upload-card" for="upload">
           <span>Upload image</span>
           <strong>Use a local JPG, PNG, WEBP or SVG</strong>
-          <small>This file stays in your browser. Only steel or metal inspection images are scored in this private static demo.</small>
+          <small>This file stays in your browser. Only steel or metal inspection images are scored in this public static demo.</small>
           <input id="upload" type="file" accept="image/*">
         </label>
         <p class="source-note">Use the built-in sample pack for a fast pitch flow, or test with a downloaded open-source inspection image.</p>
@@ -142,7 +153,7 @@
       </aside>
     </section>
 
-    <p class="demo-note">This private demo is browser-only. Sample images are illustrative and do not represent verified factory performance.</p>
+    <p class="demo-note">This public demo is browser-only. Sample images are illustrative and do not represent verified factory performance.</p>
   </main>
   <script src="product-demo.js"></script>
 </body>

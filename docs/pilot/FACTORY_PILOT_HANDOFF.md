@@ -44,12 +44,8 @@ Open:
 https://localhost/dashboard/executive
 ```
 
-Demo login:
-
-```text
-admin@demo.com
-Admin123!
-```
+Use the local demo seed user for offline validation only. Before a factory
+pilot, create tenant-specific admin/operator users and rotate all demo secrets.
 
 Run acceptance validation before leaving for the demo:
 
@@ -181,7 +177,7 @@ The factory can move from generic AI to its own continuously improving model.
 
 If login fails:
 
-- Use `admin@demo.com / Admin123!`.
+- Recreate the local demo seed user or create a tenant-specific admin account.
 - Confirm API readiness at `http://localhost:8000/ready`.
 - Run `.\scripts\prime-demo.ps1 -Count 8`.
 

@@ -6,7 +6,7 @@ GitHub Pages.
 ## What may be public
 
 - `investor-demo/` static investor demo.
-- Demo credentials such as `admin@demo.com / Admin123!`.
+- Demo-only local setup instructions without reusable pilot credentials.
 - Placeholder `.env.example` values marked as demo/local defaults.
 - Documentation, scripts and Docker Compose files for local demo setup.
 

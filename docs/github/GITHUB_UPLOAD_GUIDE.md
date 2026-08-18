@@ -56,9 +56,5 @@ Open:
 https://localhost/dashboard/executive
 ```
 
-Login:
-
-```text
-admin@demo.com
-Admin123!
-```
+Login with the demo seed user shown by the local setup output. Do not use demo
+credentials for a factory pilot.

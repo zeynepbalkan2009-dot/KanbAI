@@ -43,7 +43,7 @@ npm run build
 | Check | Result | Notes |
 |---|---:|---|
 | API readiness | PASS | `{"status":"ok","dependencies":{"postgresql":"ok","redis":"ok","minio":"ok"}}` |
-| Admin login | PASS | `admin@demo.com / Admin123!` returns bearer token |
+| Admin login | PASS | Demo seed user returns bearer token |
 | Demo reset + seed | PASS | 8 metal inspection records seeded after reset |
 | Web TypeScript | PASS | `tsc --noEmit --incremental false` |
 | Web production build | PASS | Next build compiled and generated app routes including `/dashboard/pilot` |
@@ -125,12 +125,8 @@ npm run build
 https://localhost/dashboard/executive
 ```
 
-4. Login:
-
-```text
-admin@demo.com
-Admin123!
-```
+4. Login with the demo seed user shown by the local setup output. Replace all
+   seeded credentials before any factory pilot.
 
 5. Recommended demo path:
 

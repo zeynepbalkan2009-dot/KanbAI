@@ -54,7 +54,7 @@ KanbAI factory demo acceptance test passed.
 ```
 
 ## Demo Kullanici
-- Admin: `admin@demo.com`
-- Operator: `operator@demo.com`
 
-Sifreler seed tarafindan demo amacli uretilir; pilot oncesi fabrika ortaminda degistirilmelidir.
+Demo kullanicilari seed tarafindan yalnizca lokal dogrulama icin uretilir.
+Pilot oncesi fabrika tenant'i icin yeni admin/operator hesaplari acilmali ve
+tum demo sifreleri degistirilmelidir.

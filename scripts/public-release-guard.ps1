@@ -98,4 +98,4 @@ if ($secretHits.Count -gt 0) {
 }
 
 Info "Public release guard passed."
-Write-Host "Allowed public demo defaults remain intentionally documented in .env.example and demo scripts." -ForegroundColor Yellow
+Write-Host "Public demo is clear of high-risk secrets, runtime artifacts, model weights and datasets." -ForegroundColor Yellow

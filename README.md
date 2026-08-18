@@ -71,12 +71,9 @@ Open:
 http://localhost
 ```
 
-Demo login:
-
-```text
-admin@demo.com
-Admin123!
-```
+The local demo seed creates demo-only users for smoke testing. Do not reuse
+demo credentials for a factory pilot; create tenant-specific accounts and
+rotate secrets before any real deployment.
 
 Run the smoke test:
 

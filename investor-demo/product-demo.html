@@ -1,1 +1,118 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KanbAI Interactive Demo</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="product-demo.css"></head><body class="demo-body"><main class="demo-shell"><header class="demo-header"><a class="brand" href="index.html"><span>Kanb</span><b>AI</b></a><span>INTERACTIVE SIMULATION · No factory data</span><a class="btn btn-secondary" href="index.html">Website</a></header><section class="demo-hero"><p class="eyebrow">PRODUCT WALKTHROUGH</p><h1>Follow one part through the quality loop.</h1><p>This browser-only simulation shows capture, AI suggestion, human review and structured learning. It does not run a real model or upload an image.</p></section><section class="demo-grid"><article><p class="eyebrow">1 · CAPTURE</p><img src="assets/hero-factory.png" alt="Sample industrial component"><h2>Housing A17</h2><p>Line 1 · Station 3 · Sample image</p><button class="btn btn-primary" id="inspect">Run simulated inspection</button></article><article id="result" hidden><p class="eyebrow">2 · AI SUGGESTION</p><h2 class="review">REVIEW</h2><p>Example surface anomaly. A human reviewer makes the final decision.</p><button class="btn btn-primary" id="confirm">Confirm defect</button><button class="btn btn-secondary" id="ok">Mark as OK</button></article><article id="learn" hidden><p class="eyebrow">3 · HUMAN VERIFIED</p><h2 id="decision">Decision recorded</h2><p>One verified sample is added to the illustrative learning queue.</p><div class="demo-metric"><span>Verified samples</span><b>249</b></div><a class="btn btn-secondary" href="mailto:zeynep.balkan2009@gmail.com?subject=KanbAI%20Factory%20Pilot">Discuss a real pilot</a></article></section><p class="demo-note">For a real pilot, KanbAI adds trusted HTTPS, tenant isolation, real camera validation and a factory-approved model evaluated against ground truth.</p></main><script src="product-demo.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>KanbAI Interactive Demo</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="product-demo.css">
+</head>
+<body class="demo-body">
+  <main class="demo-shell">
+    <header class="demo-header">
+      <a class="brand" href="index.html"><span>Kanb</span><b>AI</b></a>
+      <span>PRIVATE SIMULATION - No factory data</span>
+      <a class="btn btn-secondary" href="index.html">Website</a>
+    </header>
+
+    <section class="demo-hero">
+      <div>
+        <p class="eyebrow">PRODUCT WALKTHROUGH</p>
+        <h1>Run a visual inspection without touching production data.</h1>
+        <p>Select one of 20 sample scans or upload a local image. The browser simulates capture, AI triage, human validation and dataset contribution.</p>
+      </div>
+      <div class="hero-metrics" aria-label="Demo metrics">
+        <span><b>20</b> sample scans</span>
+        <span><b>3</b> AI outcomes</span>
+        <span><b>0</b> backend calls</span>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <aside class="sample-panel">
+        <div class="panel-heading">
+          <p class="eyebrow">IMAGE SOURCE</p>
+          <h2>Inspection samples</h2>
+        </div>
+        <label class="upload-card" for="upload">
+          <span>Upload image</span>
+          <strong>Use a local JPG, PNG, WEBP or SVG</strong>
+          <input id="upload" type="file" accept="image/*">
+        </label>
+        <div class="sample-toolbar">
+          <span>Factory sample pack</span>
+          <button id="reset" type="button">Reset</button>
+        </div>
+        <div class="sample-grid" id="sampleGrid" aria-label="Sample scan picker"></div>
+      </aside>
+
+      <section class="inspection-panel">
+        <div class="panel-topline">
+          <div>
+            <p class="eyebrow">1 - CAPTURE</p>
+            <h2 id="partName">Housing A17</h2>
+          </div>
+          <span class="status-pill" id="sourcePill">Sample scan</span>
+        </div>
+
+        <div class="viewer">
+          <img id="preview" src="assets/samples/sample-01.svg" alt="Selected inspection sample">
+          <div class="bbox" id="bbox">
+            <span id="bboxLabel">crack - 94%</span>
+          </div>
+        </div>
+
+        <div class="inspection-meta">
+          <span id="station">Line 1 / Station 3</span>
+          <span id="material">Aluminum housing</span>
+          <span id="timestamp">18 Aug 2026 - 15:42</span>
+        </div>
+
+        <button class="btn btn-primary run-button" id="inspect">Run simulated inspection</button>
+      </section>
+
+      <aside class="decision-panel">
+        <div class="decision-card">
+          <p class="eyebrow">2 - AI SUGGESTION</p>
+          <h2 id="decisionTitle">Waiting for image</h2>
+          <p id="decisionBody">Choose a sample or upload an image, then run the simulated inspection.</p>
+          <div class="confidence">
+            <span>Confidence</span>
+            <b id="confidenceValue">--</b>
+          </div>
+          <div class="bar"><span id="confidenceBar"></span></div>
+          <dl>
+            <div><dt>Defect class</dt><dd id="defectClass">--</dd></div>
+            <div><dt>Suggested root cause</dt><dd id="rootCause">--</dd></div>
+          </dl>
+        </div>
+
+        <div class="decision-card" id="hitlCard">
+          <p class="eyebrow">3 - HUMAN VALIDATION</p>
+          <h2>Quality review</h2>
+          <p>Final decision is made by the quality team before the sample contributes to the dataset.</p>
+          <div class="button-row">
+            <button class="btn btn-primary" id="confirm">Approve</button>
+            <button class="btn btn-secondary" id="reject">Reject</button>
+            <button class="btn btn-secondary" id="wrong">Wrong prediction</button>
+          </div>
+        </div>
+
+        <div class="decision-card" id="learnCard" hidden>
+          <p class="eyebrow">4 - DATASET CONTRIBUTION</p>
+          <h2 id="reviewDecision">Decision recorded</h2>
+          <p id="reviewCopy">The verified image is added to the illustrative learning queue.</p>
+          <div class="learning-stats">
+            <span>Verified samples <b id="verifiedCount">249</b></span>
+            <span>Retraining queue <b id="queueCount">18</b></span>
+          </div>
+          <a class="btn btn-secondary" href="mailto:zeynep.balkan2009@gmail.com?subject=KanbAI%20Factory%20Pilot">Discuss a real pilot</a>
+        </div>
+      </aside>
+    </section>
+
+    <p class="demo-note">This private demo is browser-only. Sample images are illustrative and do not represent verified factory performance.</p>
+  </main>
+  <script src="product-demo.js"></script>
+</body>
+</html>

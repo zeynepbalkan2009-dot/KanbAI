@@ -55,6 +55,10 @@ jobs:
               throw "Missing required private demo file: $path"
             }
           }
+          $samples = Get-ChildItem "investor-demo/assets/samples" -Filter "*.svg"
+          if ($samples.Count -ne 20) {
+            throw "Expected 20 private demo sample scans, found $($samples.Count)."
+          }
 
       - name: Upload private demo artifact
         uses: actions/upload-artifact@v4

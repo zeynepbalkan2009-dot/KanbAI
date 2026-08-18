@@ -19,6 +19,12 @@ port `8080` and GitHub keeps forwarded ports private by default.
 
 See `docs/PRIVATE_GITHUB_DEMO.md` for the full flow.
 
+## Sample images
+
+The interactive product demo includes 20 illustrative product scan files under
+`assets/samples/`. Reviewers can also upload a local image in the browser-only
+demo; uploaded files never leave the browser in this static version.
+
 ## Before production
 
 - Replace `hello@kanbai.ai` and `investors@kanbai.ai` if needed.

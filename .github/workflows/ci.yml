@@ -36,6 +36,10 @@ jobs:
             exit 1
           fi
 
+      - name: Run public release guard
+        shell: pwsh
+        run: ./scripts/public-release-guard.ps1
+
   backend-syntax:
     name: Backend Python syntax
     runs-on: ubuntu-latest

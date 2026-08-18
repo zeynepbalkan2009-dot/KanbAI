@@ -107,6 +107,10 @@ from the same public HTTPS domain. The deployable, isolated demo stack is
 documented in [Public Investor Demo Deployment](docs/PUBLIC_DEMO_DEPLOYMENT.md).
 It uses mock inference and must never receive real factory data.
 
+Before making the repository public or enabling GitHub Pages, run the
+[Public Release Checklist](docs/PUBLIC_RELEASE_CHECKLIST.md) and
+`scripts/public-release-guard.ps1`.
+
 ## Private GitHub Demo
 
 For GitHub-only review without publishing a public site, use the static

@@ -8,6 +8,7 @@ GitHub visitors.
 
 - [Architecture](product/ARCHITECTURE.md)
 - [Known limitations](product/KNOWN_LIMITATIONS.md)
+- [Open dataset catalog](../mlops/dataset/OPEN_DATASETS.md)
 
 ## Public Demo And Deployment
 

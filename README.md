@@ -93,6 +93,15 @@ Start here:
 - [Factory Pilot Handoff](docs/pilot/FACTORY_PILOT_HANDOFF.md)
 - [Pilot Acceptance Criteria](docs/pilot/PILOT_ACCEPTANCE_CRITERIA.md)
 
+## Open Dataset Catalog
+
+KanbAI does not scrape vendor websites or commit third-party raw images. Free
+open industrial datasets are tracked through a local catalog and downloader:
+
+- [Open dataset catalog](mlops/dataset/OPEN_DATASETS.md)
+- Catalog metadata: `mlops/dataset/open_sources.json`
+- Windows helper: `.\scripts\prepare-open-datasets.ps1 -List`
+
 ## Documentation
 
 - [Documentation index](docs/README.md)

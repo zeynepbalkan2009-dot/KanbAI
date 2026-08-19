@@ -1,0 +1,145 @@
+{
+  "schema_version": "1.0",
+  "policy": {
+    "default_storage": "mlops/dataset/raw/open",
+    "commit_raw_data": false,
+    "require_attribution": true,
+    "notes": [
+      "Only use sources with a clear open license for demo, research, and model prototyping.",
+      "Do not mix GERMAKSAN/private factory images with public open datasets.",
+      "Verify the source page again before investor demos, pilots, or commercial use."
+    ]
+  },
+  "sources": [
+    {
+      "id": "defects_metal_surface",
+      "name": "Defects metal surface",
+      "provider": "roboflow_universe",
+      "workspace": "defects-location-for-metal-surface",
+      "project": "defects-metal-surface",
+      "version": 1,
+      "task": "object_detection",
+      "license": "CC BY 4.0",
+      "source_url": "https://universe.roboflow.com/defects-location-for-metal-surface/defects-metal-surface",
+      "image_count": 484,
+      "classes": [
+        "inclusion",
+        "crease",
+        "crescent_gap",
+        "objects",
+        "oil_spot",
+        "punching_hole",
+        "rolled_pit",
+        "silk_spot",
+        "waist folding",
+        "water_spot",
+        "welding_line"
+      ],
+      "recommended_use": "Small first download for scope gate tuning and metal surface defect UI demos.",
+      "attribution": "Defects metal surface Dataset by Defects location for metal surface, Roboflow Universe, CC BY 4.0."
+    },
+    {
+      "id": "sheet_metal_defect_detection",
+      "name": "Sheet Metal Defect Detection",
+      "provider": "roboflow_universe",
+      "workspace": "laurcore",
+      "project": "sheet-metal-defect-detection",
+      "version": 1,
+      "task": "object_detection",
+      "license": "CC BY 4.0",
+      "source_url": "https://universe.roboflow.com/laurcore/sheet-metal-defect-detection",
+      "image_count": 2277,
+      "classes": [
+        "1_chongkong",
+        "10_yaozhe",
+        "10_yaozhed",
+        "2_hanfeng",
+        "3_yueyawan",
+        "4_shuiban",
+        "5_youban",
+        "6_siban",
+        "7_yiwu",
+        "8_yahen",
+        "9_zhehen",
+        "d"
+      ],
+      "recommended_use": "Primary free dataset candidate for early YOLOv8 object-detection experiments.",
+      "attribution": "Sheet Metal Defect Detection Dataset by laurcore, Roboflow Universe, CC BY 4.0."
+    },
+    {
+      "id": "weld_defects",
+      "name": "weld defects",
+      "provider": "roboflow_universe",
+      "workspace": "yolov8-daldb",
+      "project": "weld-defects-mlopr",
+      "version": 1,
+      "task": "object_detection",
+      "license": "CC BY 4.0",
+      "source_url": "https://universe.roboflow.com/yolov8-daldb/weld-defects-mlopr",
+      "image_count": 2000,
+      "classes": [
+        "Defect",
+        "Bad Weld",
+        "Good Weld"
+      ],
+      "recommended_use": "Welding-specific demo and future factory-line expansion story.",
+      "attribution": "weld defects Dataset by YOLOv8, Roboflow Universe, CC BY 4.0."
+    },
+    {
+      "id": "steel_rope_defect_detection",
+      "name": "Steel rope defect detection",
+      "provider": "roboflow_universe",
+      "workspace": "project-h9rji",
+      "project": "steel-rope-defect-detection",
+      "version": 2,
+      "task": "object_detection",
+      "license": "CC BY 4.0",
+      "source_url": "https://universe.roboflow.com/project-h9rji/steel-rope-defect-detection",
+      "image_count": 305,
+      "classes": [
+        "fracture",
+        "wire",
+        "divide",
+        "wear"
+      ],
+      "recommended_use": "Narrow industrial safety/maintenance example; useful for out-of-scope vs metal-like tuning.",
+      "attribution": "Steel rope defect detection Dataset by project-h9rji, Roboflow Universe, CC BY 4.0."
+    },
+    {
+      "id": "wire_rope_defect",
+      "name": "Wire Rope Defect",
+      "provider": "roboflow_universe",
+      "workspace": "wirerope-qfgck",
+      "project": "wire-rope-defect-f4qyg",
+      "version": 1,
+      "task": "object_detection",
+      "license": "CC BY 4.0",
+      "source_url": "https://universe.roboflow.com/wirerope-qfgck/wire-rope-defect-f4qyg",
+      "image_count": 4317,
+      "classes": [
+        "break",
+        "thunderbolt",
+        "wear"
+      ],
+      "recommended_use": "Larger wire-rope variant for robustness testing after the first sheet-metal batch.",
+      "attribution": "Wire Rope Defect Dataset by WireRope, Roboflow Universe, CC BY 4.0."
+    }
+  ],
+  "reference_only": [
+    {
+      "id": "mvtec_ad",
+      "name": "MVTec AD",
+      "reason": "Excellent industrial anomaly benchmark, but keep as benchmark/reference unless usage terms are explicitly acceptable for the planned demo or pilot."
+    },
+    {
+      "id": "kolektor_sdd",
+      "name": "KolektorSDD",
+      "reason": "Useful industrial defect benchmark, but common distribution is non-commercial; do not use for commercial demo assets without permission."
+    },
+    {
+      "id": "company_website_images",
+      "name": "Vendor website images",
+      "reason": "Do not scrape or train from company marketing/product pages unless written permission is granted."
+    }
+  ]
+}

@@ -7,12 +7,14 @@ from pydantic import BaseModel
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.domains.auth.service import CurrentUser, get_current_user, require_role
 from app.infrastructure.database.models import DatasetContribution, HITLReview, InspectionResult
 from app.infrastructure.database.session import get_db
 
 router = APIRouter(prefix="/hitl", tags=["human-in-the-loop"])
+settings = get_settings()
 
 
 class HITLDecisionIn(BaseModel):
@@ -20,6 +22,12 @@ class HITLDecisionIn(BaseModel):
     corrected_label: Optional[str] = None
     notes: Optional[str] = None
     dataset_contribution: bool = True
+
+
+def review_queue_decisions() -> list[str]:
+    if settings.pilot_mode:
+        return ["pass", "review", "fail"]
+    return ["review", "fail"]
 
 
 @router.get("/queue")
@@ -30,7 +38,7 @@ async def hitl_queue(limit: int = Query(50, le=200), current: CurrentUser = Depe
             InspectionResult.factory_id == uuid.UUID(current.tenant_id),
             InspectionResult.deleted_at.is_(None),
             InspectionResult.operator_decision.is_(None),
-            InspectionResult.decision.in_(["review", "fail"]),
+            InspectionResult.decision.in_(review_queue_decisions()),
         )
         .order_by(InspectionResult.created_at.desc())
         .limit(limit)
@@ -52,7 +60,7 @@ async def hitl_queue(limit: int = Query(50, le=200), current: CurrentUser = Depe
 
 @router.get("/stats")
 async def hitl_stats(current: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    pending = await db.execute(select(func.count()).select_from(InspectionResult).where(InspectionResult.factory_id == uuid.UUID(current.tenant_id), InspectionResult.operator_decision.is_(None), InspectionResult.decision.in_(["review", "fail"]), InspectionResult.deleted_at.is_(None)))
+    pending = await db.execute(select(func.count()).select_from(InspectionResult).where(InspectionResult.factory_id == uuid.UUID(current.tenant_id), InspectionResult.operator_decision.is_(None), InspectionResult.decision.in_(review_queue_decisions()), InspectionResult.deleted_at.is_(None)))
     reviewed = await db.execute(select(func.count()).select_from(HITLReview).where(HITLReview.factory_id == uuid.UUID(current.tenant_id)))
     dataset = await db.execute(select(func.count()).select_from(DatasetContribution).where(DatasetContribution.factory_id == uuid.UUID(current.tenant_id)))
     return {"pending_reviews": pending.scalar() or 0, "completed_reviews": reviewed.scalar() or 0, "dataset_contributions": dataset.scalar() or 0}

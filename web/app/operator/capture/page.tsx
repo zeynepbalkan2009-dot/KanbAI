@@ -123,25 +123,29 @@ export default function OperatorCapturePage() {
         localStorage.setItem(DEVICE_UUID_KEY, phoneUuid);
       }
 
-      const existing =
-        devices.find((item) => item.device_uuid === phoneUuid) ??
-        devices.find((item) => item.name.toLowerCase().includes("phone")) ??
-        devices[0] ??
-        null;
-
+      const existing = devices.find((item) => item.device_uuid === phoneUuid) ?? null;
       if (existing) {
         setDevice(existing);
         return;
       }
 
-      const { data } = await devicesApi.register({
-        device_uuid: phoneUuid,
-        name: "GERMAKSAN Phone Capture",
-        location_label: "GERMAKSAN / Mobile QC",
-        station_id: selectedStation?.id,
-      });
-      setDevice(data as Device);
-      toast.success("Telefon operator cihazi olarak kaydedildi");
+      try {
+        const { data } = await devicesApi.register({
+          device_uuid: phoneUuid,
+          name: "GERMAKSAN Phone Capture",
+          location_label: "GERMAKSAN / Mobile QC",
+          station_id: selectedStation?.id,
+        });
+        setDevice(data as Device);
+        toast.success("Telefon operator cihazi olarak kaydedildi");
+      } catch {
+        const fallback =
+          devices.find((item) => item.name.toLowerCase().includes("phone")) ??
+          devices[0] ??
+          null;
+        if (!fallback) throw new Error("Device registration failed");
+        setDevice(fallback);
+      }
     } catch {
       toast.error("Telefon cihazi hazirlanamadi");
     } finally {
@@ -400,7 +404,7 @@ export default function OperatorCapturePage() {
               </div>
               <p className="mt-4 text-sm leading-6 opacity-75">
                 {inspectionId
-                  ? `Muayene kaydi: ${inspectionId.slice(0, 8)}. Laptop dashboard'da Muayene Kayitlari ve Inceleme Kuyrugu ekranlarini kontrol edin.`
+                  ? `Muayene kaydi: ${inspectionId.slice(0, 8)}. Pilot modda PASS dahil her fotograf kalite sorumlusunun Inceleme Kuyrugu'na duser.`
                   : "Henuz fotograf gonderilmedi."}
               </p>
             </section>

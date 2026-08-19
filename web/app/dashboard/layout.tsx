@@ -83,9 +83,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       : "Baglanti kontrol ediliyor";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#090B10]">
-      <aside className="flex w-64 flex-col border-r border-white/10 bg-[#0f131c]">
-        <div className="border-b border-gray-800 px-5 py-5">
+    <div className="flex h-screen overflow-hidden bg-[#f5f7fb] text-[#0b1020]">
+      <aside className="flex w-64 flex-col border-r border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-5 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[#2563eb]">
               <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,27 +94,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-white">KanbAI</p>
-              <p className="max-w-[120px] truncate text-xs text-gray-500">
+              <p className="text-sm font-bold text-[#0b1020]">KanbAI</p>
+              <p className="max-w-[120px] truncate text-xs text-slate-500">
                 Industrial Quality CRM
               </p>
             </div>
           </div>
         </div>
 
-        <div className="border-b border-white/10 px-3 py-3">
-          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-            <div className="flex items-center gap-2 text-xs text-white/40">
+        <div className="border-b border-slate-200 px-3 py-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
               <Building2 size={14} />
               Factory account
             </div>
-            <p className="mt-2 truncate text-sm font-medium text-white">{factoryName}</p>
-            <p className="mt-1 truncate text-xs text-white/35">{user?.full_name} / {user?.role}</p>
+            <p className="mt-2 truncate text-sm font-medium text-[#0b1020]">{factoryName}</p>
+            <p className="mt-1 truncate text-xs text-slate-500">{user?.full_name} / {user?.role}</p>
           </div>
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
-          <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/30">
+          <p className="px-3 pb-2 text-[11px] font-semibold uppercase text-slate-400">
             Operations
           </p>
           {NAV.map(({ href, label, icon: Icon }) => {
@@ -125,8 +125,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 href={href}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
                   active
-                    ? "bg-[#00C2FF]/10 font-medium text-[#7de4ff]"
-                    : "text-white/45 hover:bg-white/5 hover:text-white"
+                    ? "bg-[#00C2FF]/12 font-medium text-sky-700"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-950"
                 }`}
               >
                 <Icon size={16} />
@@ -137,16 +137,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        <div className="space-y-3 border-t border-white/10 px-4 py-4">
+        <div className="space-y-3 border-t border-slate-200 px-4 py-4">
           <div className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs ${
-            systemOnline ? "bg-emerald-900/20 text-emerald-400" : "bg-amber-900/20 text-amber-400"
+            systemOnline ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
           }`}>
             {systemOnline ? <Wifi size={13} /> : <WifiOff size={13} />}
             {connectionLabel}
           </div>
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-400 transition hover:bg-red-900/20 hover:text-red-400"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-500 transition hover:bg-red-50 hover:text-red-600"
           >
             <LogOut size={16} />
             Cikis Yap

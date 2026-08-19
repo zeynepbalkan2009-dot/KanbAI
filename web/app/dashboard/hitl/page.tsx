@@ -82,7 +82,7 @@ export default function HitlPage() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [stats, setStats] = useState<HitlStats | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [correctedLabel, setCorrectedLabel] = useState("crack");
+  const [correctedLabel, setCorrectedLabel] = useState("good");
   const [notes, setNotes] = useState("Confirmed defect. Add to retraining dataset and monitor recurrence on Line 1.");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -122,9 +122,7 @@ export default function HitlPage() {
   }, [load]);
 
   useEffect(() => {
-    if (selected?.defects?.[0]?.class_name) {
-      setCorrectedLabel(selected.defects[0].class_name);
-    }
+    setCorrectedLabel(selected?.defects?.[0]?.class_name ?? (selected?.decision === "pass" ? "good" : "scratch"));
   }, [selected?.id]);
 
   useEffect(() => {
@@ -288,7 +286,7 @@ export default function HitlPage() {
                 <span className={`-mt-8 inline-flex rounded-md px-2 py-1 text-xs font-semibold ${
                   selected?.decision === "pass" ? "bg-emerald-600 text-white" : selected?.decision === "fail" ? "bg-red-600 text-white" : "bg-[#FF7A00] text-black"
                 }`}>
-                  {selected?.defects?.[0]?.class_name ?? "crack"} {selected?.confidence ? Math.round(selected.confidence * 100) : 91}%
+                  {selected?.defects?.[0]?.class_name ?? (selected?.decision === "pass" ? "good part" : "unlabeled anomaly")} {selected?.confidence ? Math.round(selected.confidence * 100) : 91}%
                 </span>
               </div>
               <div className="absolute bottom-5 left-5 right-5 rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm backdrop-blur">

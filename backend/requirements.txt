@@ -44,7 +44,7 @@ Pillow==10.4.0
 
 # MLOps
 mlflow==2.13.0
-dvc==3.50.0
+dvc==3.67.1
 ultralytics==8.2.27
 onnxruntime==1.18.0
 albumentations==1.4.7

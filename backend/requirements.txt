@@ -47,6 +47,6 @@ mlflow==2.13.0
 dvc==3.50.0
 ultralytics==8.2.27
 onnxruntime==1.18.0
-albumentations==1.4.7
+albumentations==2.0.8
 opencv-python-headless==4.9.0.80
 psycopg2-binary==2.9.9

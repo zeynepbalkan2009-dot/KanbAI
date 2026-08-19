@@ -35,7 +35,7 @@ Roboflow downloads require a free Roboflow API key.
 ```powershell
 cd D:\kanba-qc-platform\qc-platform
 python -m pip install roboflow
-set ROBOFLOW_API_KEY=your_key_here
+$env:ROBOFLOW_API_KEY = "paste_your_real_roboflow_key_here"
 python mlops\dataset\download_open_datasets.py --list
 python mlops\dataset\download_open_datasets.py --source defects_metal_surface
 ```

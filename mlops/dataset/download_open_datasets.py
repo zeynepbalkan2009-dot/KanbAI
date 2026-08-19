@@ -30,6 +30,12 @@ CATALOG_FILE = BASE_DIR / "open_sources.json"
 RAW_DIR = BASE_DIR / "raw" / "open"
 VERSIONS_DIR = BASE_DIR / "versions"
 MANIFEST_FILE = VERSIONS_DIR / "open_dataset_manifest.json"
+PLACEHOLDER_API_KEYS = {
+    "your_key_here",
+    "senin_keyin",
+    "buraya_api_key",
+    "<key>",
+}
 
 
 def load_catalog() -> dict[str, Any]:
@@ -70,11 +76,16 @@ def list_sources(catalog: dict[str, Any]) -> None:
 
 
 def ensure_roboflow_client():
-    api_key = os.environ.get("ROBOFLOW_API_KEY")
+    api_key = (os.environ.get("ROBOFLOW_API_KEY") or "").strip()
     if not api_key:
         raise RuntimeError(
             "ROBOFLOW_API_KEY is not set. Create a free Roboflow account, "
             "copy the API key, then run: set ROBOFLOW_API_KEY=<key>"
+        )
+    if api_key.lower() in PLACEHOLDER_API_KEYS:
+        raise RuntimeError(
+            "ROBOFLOW_API_KEY still contains an example value. Replace it with "
+            "your real Roboflow key from Account > Roboflow Keys."
         )
 
     try:

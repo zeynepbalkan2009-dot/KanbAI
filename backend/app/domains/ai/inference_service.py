@@ -22,6 +22,36 @@ logger = get_logger(__name__)
 settings = get_settings()
 
 
+def configure_trusted_checkpoint_loading(model_name: str) -> None:
+    """
+    Keep trusted YOLO .pt weights compatible with newer PyTorch checkpoint rules.
+
+    Use this only for official or locally trained model files. Some Ultralytics
+    checkpoints store model classes, not only tensors.
+    """
+    if not str(model_name).lower().endswith(".pt"):
+        return
+    try:
+        import inspect
+        import torch
+    except ImportError:
+        return
+
+    if "weights_only" not in inspect.signature(torch.load).parameters:
+        return
+    if getattr(torch.load, "_kanbai_trusted_checkpoint_patch", False):
+        return
+
+    original_load = torch.load
+
+    def trusted_load(*args, **kwargs):
+        kwargs.setdefault("weights_only", False)
+        return original_load(*args, **kwargs)
+
+    trusted_load._kanbai_trusted_checkpoint_patch = True
+    torch.load = trusted_load
+
+
 # ── Data structures ───────────────────────────────────────────────────────────
 
 DEFECT_CLASSES = [
@@ -294,6 +324,7 @@ class YOLOInferenceService:
                 "Use the full backend requirements or install ultralytics in the worker image."
             ) from exc
 
+        configure_trusted_checkpoint_loading(model_path)
         self._model = YOLO(model_path)
         self._version = self._extract_version(model_path)
         logger.info("yolo_model_loaded", path=model_path, version=self._version)

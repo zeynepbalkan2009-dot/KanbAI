@@ -24,6 +24,36 @@ from pathlib import Path
 from typing import Optional
 import json
 
+
+def configure_trusted_checkpoint_loading(model_name: str) -> None:
+    """
+    Keep trusted YOLO .pt weights compatible with newer PyTorch checkpoint rules.
+
+    Use this only for official or locally trained model files. Some Ultralytics
+    checkpoints store model classes, not only tensors.
+    """
+    if not str(model_name).lower().endswith(".pt"):
+        return
+    try:
+        import inspect
+        import torch
+    except ImportError:
+        return
+
+    if "weights_only" not in inspect.signature(torch.load).parameters:
+        return
+    if getattr(torch.load, "_kanbai_trusted_checkpoint_patch", False):
+        return
+
+    original_load = torch.load
+
+    def trusted_load(*args, **kwargs):
+        kwargs.setdefault("weights_only", False)
+        return original_load(*args, **kwargs)
+
+    trusted_load._kanbai_trusted_checkpoint_patch = True
+    torch.load = trusted_load
+
 # ── Result types ─────────────────────────────────────────────────────────────
 
 @dataclass
@@ -176,6 +206,7 @@ class MockInferenceBackend:
 class YOLOBackend:
     def __init__(self, model_path: str):
         from ultralytics import YOLO
+        configure_trusted_checkpoint_loading(model_path)
         self._model = YOLO(model_path)
         self._version = Path(model_path).stem
         self._class_names = self._model.names

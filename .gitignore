@@ -48,12 +48,15 @@ logs/
 backend/celerybeat-schedule
 
 # Models and generated ML artifacts
+yolov8*.pt
 backend/models/*.pt
 backend/models/*.onnx
 backend/models/*.engine
 mlops/**/runs/
 mlops/**/artifacts/
 mlops/registry/*.json
+mlops/training/inference/models/
+mlops/training/registry/*.json
 mlops/dataset/raw/
 mlops/dataset/processed/
 mlops/dataset/versions/

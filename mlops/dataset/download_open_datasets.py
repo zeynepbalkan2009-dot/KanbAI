@@ -111,6 +111,8 @@ def download_roboflow_source(source: dict[str, Any], export_format: str) -> dict
     project = workspace.project(source["project"])
     version = project.version(int(source["version"]))
     dataset = version.download(export_format, location=str(target_dir), overwrite=True)
+    dataset_path = Path(dataset.location).resolve()
+    normalize_yolo_data_yaml(dataset_path)
 
     return {
         "id": source["id"],
@@ -120,9 +122,28 @@ def download_roboflow_source(source: dict[str, Any], export_format: str) -> dict
         "source_url": source["source_url"],
         "attribution": source["attribution"],
         "format": export_format,
-        "path": str(Path(dataset.location).resolve()),
+        "path": str(dataset_path),
         "downloaded_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def normalize_yolo_data_yaml(dataset_path: Path) -> None:
+    data_yaml = dataset_path / "data.yaml"
+    if not data_yaml.exists():
+        return
+
+    import yaml
+
+    data = yaml.safe_load(data_yaml.read_text(encoding="utf-8")) or {}
+    changed = False
+    for split, normalized in {"train": "train/images", "val": "valid/images", "test": "test/images"}.items():
+        if split in data and data[split] != normalized and (dataset_path / normalized).exists():
+            data[split] = normalized
+            changed = True
+
+    if changed:
+        data_yaml.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+        print(f"  normalized data.yaml paths: {data_yaml}")
 
 
 def select_sources(catalog: dict[str, Any], requested: str) -> list[dict[str, Any]]:

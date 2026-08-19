@@ -45,6 +45,39 @@ REGISTRY_DIR  = Path(__file__).parent.parent / "registry"
 EXPORT_DIR    = Path(__file__).parent.parent / "inference" / "models"
 
 
+def configure_trusted_checkpoint_loading(model_name: str) -> None:
+    """
+    Keep older Ultralytics checkpoints compatible with newer PyTorch releases.
+
+    PyTorch now defaults checkpoint loading toward weights-only safety. Official
+    Ultralytics `.pt` checkpoints still contain model classes, so this local
+    training script allows full checkpoint loading for trusted YOLO weights only.
+    Do not use untrusted `.pt` files here.
+    """
+    if not str(model_name).lower().endswith(".pt"):
+        return
+    try:
+        import inspect
+        import torch
+    except ImportError:
+        return
+
+    if "weights_only" not in inspect.signature(torch.load).parameters:
+        return
+    if getattr(torch.load, "_kanbai_trusted_checkpoint_patch", False):
+        return
+
+    original_load = torch.load
+
+    def trusted_load(*args, **kwargs):
+        kwargs.setdefault("weights_only", False)
+        return original_load(*args, **kwargs)
+
+    trusted_load._kanbai_trusted_checkpoint_patch = True
+    torch.load = trusted_load
+    print("  INFO Trusted YOLO checkpoint compatibility enabled")
+
+
 # ── Training orchestrator ─────────────────────────────────────────────────────
 
 class YOLOTrainer:
@@ -101,6 +134,7 @@ class YOLOTrainer:
         print(f"  Run name:   {self.run_name}")
         print(f"{'='*60}\n")
 
+        configure_trusted_checkpoint_loading(self.model_name)
         model = YOLO(self.model_name)
 
         # Start MLflow run
@@ -189,6 +223,7 @@ class YOLOTrainer:
             return {}
 
         print(f"\n→ Exporting model...")
+        configure_trusted_checkpoint_loading(str(best_pt))
         model = YOLO(str(best_pt))
         exports = {}
 

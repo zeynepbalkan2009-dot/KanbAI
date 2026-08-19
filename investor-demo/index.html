@@ -17,15 +17,13 @@
       <a class="brand" href="#top" aria-label="KanbAI home"><span>Kanb</span><b>AI</b></a>
       <div class="nav-links" id="navLinks">
         <a href="#product">Product</a>
-        <a href="#thesis">Thesis</a>
-        <a href="#how">Learning loop</a>
-        <a href="#why">Moat</a>
+        <a href="#market">Market</a>
+        <a href="#why-now">Why now</a>
         <a href="#pilot">Pilot</a>
-        <a href="#investors">Investor brief</a>
       </div>
       <div class="nav-actions">
         <a class="btn btn-primary" href="product-demo.html?sample=2">Try the demo</a>
-        <a class="btn btn-link" href="#investors">For Investors -></a>
+        <a class="btn btn-link" href="#pilot">For Investors -></a>
         <button class="menu" id="menuBtn" aria-label="Open menu">Menu</button>
       </div>
     </nav>
@@ -39,7 +37,7 @@
         <p class="hero-lead">KanbAI helps manufacturers detect visual defects, keep quality teams in control and turn every verified inspection into factory-specific training data.</p>
         <div class="hero-actions">
           <a class="btn btn-primary btn-lg" href="product-demo.html?sample=2">Run the investor demo</a>
-          <a class="btn btn-secondary btn-lg" href="#investors">Read investor brief -></a>
+          <a class="btn btn-secondary btn-lg" href="#pilot">View pilot ask -></a>
         </div>
         <div class="proof-row">
           <span>2-minute guided demo</span><span>Human-verified AI</span><span>Factory-specific learning loop</span>
@@ -47,7 +45,7 @@
         <div class="hero-proof-grid" aria-label="Investor proof points">
           <article><span>Wedge</span><b>One line, one defect family</b></article>
           <article><span>Loop</span><b>Inspection -> HITL -> Dataset</b></article>
-          <article><span>Safety</span><b>Public demo sends no files</b></article>
+          <article><span>Safety</span><b>Demo sends no files</b></article>
         </div>
       </div>
       <div class="hero-visual">
@@ -65,115 +63,74 @@
       </div>
     </section>
 
-    <section class="feature-strip" id="product">
-      <div class="container strip-grid">
-        <article><div class="icon">AI</div><div><b>AI triage</b><p>Surface defects, risk and uncertainty before release.</p></div></article>
-        <article><div class="icon">QC</div><div><b>Human validation</b><p>Quality teams approve, reject or correct every critical case.</p></div></article>
-        <article><div class="icon">DS</div><div><b>Dataset layer</b><p>Verified inspections become structured training data.</p></div></article>
-        <article><div class="icon">M2</div><div><b>Model improvement</b><p>Retraining turns factory feedback into better models.</p></div></article>
+    <section class="quick-read" id="product">
+      <div class="container quick-grid">
+        <article><span>Problem</span><b>Visual quality control is still manual, inconsistent and hard to audit.</b></article>
+        <article><span>Product</span><b>KanbAI gives factories an AI-assisted inspection workflow with human approval.</b></article>
+        <article><span>Moat</span><b>Every verified inspection compounds into factory-specific training data.</b></article>
       </div>
     </section>
 
-    <section class="security-strip">
-      <div class="container security-grid">
-        <article><span>Public demo boundary</span><b>Static Pages only</b><p>No backend, database, object storage or worker is reachable from this public site.</p></article>
-        <article><span>Upload privacy</span><b>Browser local</b><p>Uploaded images stay inside the browser session and are never transmitted.</p></article>
-        <article><span>Factory data</span><b>Not accepted here</b><p>Real pilot data belongs in a controlled tenant with rotated secrets and HTTPS.</p></article>
+    <section class="section container market-section" id="market">
+      <div class="section-head compact-head">
+        <div><div class="eyebrow">MARKET</div><h2>Manufacturers are drowning in visual inspection work.</h2></div>
+        <p>Scrap, rework, returns and audit gaps are expensive, but many factories still rely on disconnected manual checks and one-off vision projects.</p>
+      </div>
+      <div class="market-grid">
+        <article><span>Buyer pain</span><b>Quality teams need fewer escapes and faster review.</b><p>KanbAI starts inside a real inspection workflow, not as a standalone AI toy.</p></article>
+        <article><span>Wedge</span><b>One line, one part, one measurable defect family.</b><p>The first pilot is narrow enough to measure and useful enough to expand.</p></article>
+        <article><span>Expansion</span><b>From inspection point to factory quality layer.</b><p>Once trusted, the same loop extends across products, stations and plants.</p></article>
       </div>
     </section>
 
-    <section class="section container thesis-section" id="thesis">
-      <div class="section-head split-head">
-        <div><div class="eyebrow">INVESTOR THESIS</div><h2>The wedge is one painful inspection point.</h2></div>
-        <p>KanbAI starts where factories already lose money: manual visual inspection, rework, scrap and undocumented quality decisions.</p>
-      </div>
-      <div class="thesis-grid">
-        <article><span>Problem</span><b>Visual QC is still manual and inconsistent.</b><p>Operators make high-volume decisions with limited traceability, and defects become cost instead of learning data.</p></article>
-        <article><span>Wedge</span><b>Deploy on one part, one line, one measurable defect family.</b><p>The first pilot measures baseline escape/rework rate, then compares AI-assisted review against the current process.</p></article>
-        <article><span>Expansion</span><b>Each approved inspection makes the system more valuable.</b><p>Once the workflow is trusted, KanbAI expands across stations, defect classes, products and factories.</p></article>
-      </div>
-    </section>
-
-    <section class="section container" id="how">
-      <div class="section-head split-head">
-        <div><div class="eyebrow">HOW IT WORKS</div><h2>See. Decide. Learn.</h2></div>
-        <p>From inspection to continuous quality improvement, without replacing the quality team.</p>
-      </div>
-      <div class="steps">
-        <article><span>01</span><h3>Capture</h3><p>Get images from a production inspection point.</p></article>
-        <article><span>02</span><h3>Inspect</h3><p>AI analyzes the product for visual defects and anomalies.</p></article>
-        <article><span>03</span><h3>Verify</h3><p>Operators review uncertain or critical cases.</p></article>
-        <article><span>04</span><h3>Retrain</h3><p>Verified examples feed the next factory-specific model.</p></article>
-      </div>
-      <div class="operating-loop">
-        <div><b>Current model</b><span>v1.8 assisted inspection</span></div>
-        <div><b>Human feedback</b><span>Approve, reject, correct label</span></div>
-        <div><b>Next model</b><span>v1.9 candidate from verified data</span></div>
-      </div>
-    </section>
-
-    <section class="section why-section" id="why">
-      <div class="container why-grid">
-        <div class="why-image"><img src="assets/factory-line.png" alt="Manufacturing line with machined components" /></div>
-        <div class="why-copy">
-          <div class="eyebrow">WHY KANBAI</div>
-          <h2>Not just a vision model.<br>A quality operating layer.</h2>
-          <p class="large">The defensibility is not a generic detector. It is the closed loop: inspection context, human decisions, factory-specific datasets and controlled model improvement.</p>
-          <div class="mini-grid">
-            <div><b>Workflow first</b><p>Fits how quality teams already approve production decisions.</p></div>
-            <div><b>Data advantage</b><p>Creates labeled datasets that competitors do not have.</p></div>
-            <div><b>Traceability</b><p>Image, AI result, operator action and station context together.</p></div>
-            <div><b>Model governance</b><p>Candidate, staging and production model path for factories.</p></div>
-          </div>
+    <section class="loop-band" id="why-now">
+      <div class="container loop-grid">
+        <div>
+          <div class="eyebrow">WHY NOW</div>
+          <h2>Factories do not need another detector. They need a learning loop.</h2>
+          <p>Modern vision models are becoming easier to deploy. The harder problem is collecting trusted labels, preserving human control and turning production decisions into better factory-specific models.</p>
+        </div>
+        <div class="loop-steps">
+          <article><span>01</span><b>Capture</b><p>Image and station context are recorded.</p></article>
+          <article><span>02</span><b>AI triage</b><p>PASS, REVIEW or FAIL is suggested.</p></article>
+          <article><span>03</span><b>Human validation</b><p>Quality teams approve or correct.</p></article>
+          <article><span>04</span><b>Retraining data</b><p>Verified samples feed the next model.</p></article>
         </div>
       </div>
     </section>
 
     <section class="section container" id="pilot">
-      <div class="pilot-card">
+      <div class="pilot-onepager">
         <div>
           <div class="eyebrow">FACTORY PILOT</div>
-          <h2>Start with one inspection point.</h2>
-          <p>We begin with one measurable visual quality problem, establish a baseline and compare KanbAI against the existing inspection process.</p>
+          <h2>Start with one inspection point. Prove one operational metric.</h2>
+          <p>KanbAI is looking for a controlled factory pilot where the team can compare current inspection performance against AI-assisted, human-verified review.</p>
         </div>
-        <div class="pilot-meta">
-          <div><b>4-8 weeks</b><span>Controlled pilot</span></div>
-          <div><b>Baseline -> Result</b><span>Measurable before / after</span></div>
-          <div><b>Human verified</b><span>Quality team stays in control</span></div>
+        <div class="pilot-checks">
+          <div><span>Duration</span><b>4-8 weeks</b></div>
+          <div><span>Setup</span><b>One product line</b></div>
+          <div><span>Metric</span><b>Escape, rework or review time</b></div>
+          <div><span>Outcome</span><b>Paid pilot decision</b></div>
         </div>
-        <a class="btn btn-primary btn-lg" href="mailto:zeynep.balkan2009@gmail.com?subject=KanbAI%20Factory%20Pilot">Request a Pilot</a>
+        <div class="pilot-actions">
+          <a class="btn btn-primary btn-lg" href="product-demo.html?sample=2">Run demo</a>
+          <a class="btn btn-secondary btn-lg" href="mailto:zeynep.balkan2009@gmail.com?subject=KanbAI%20Factory%20Pilot">Request pilot</a>
+        </div>
       </div>
     </section>
 
-    <section class="section investors" id="investors">
-      <div class="container investors-grid">
-        <div>
-          <div class="eyebrow">INVESTOR BRIEF</div>
-          <h2>Building the quality intelligence layer for manufacturing.</h2>
-          <p class="large">The near-term objective is narrow and measurable: run a real factory pilot, prove ROI at one inspection point, then expand from workflow adoption into proprietary factory data.</p>
-        </div>
-        <div class="milestones">
-          <div><span>Now</span><b>Public investor demo + factory pilot package</b></div>
-          <div><span>Next</span><b>One real inspection station with baseline metrics</b></div>
-          <div><span>Then</span><b>Paid pilot conversion and model retraining proof</b></div>
-          <div><span>Scale</span><b>Repeat across lines, parts and factories</b></div>
-        </div>
-      </div>
-      <div class="container investor-facts">
-        <article><span>Demo stance</span><b>Honest simulation</b><p>Public demo uses mock/browser analysis only and makes no unsupported factory performance claim.</p></article>
-        <article><span>Buyer</span><b>Quality, operations and plant leadership</b><p>The product speaks to scrap, rework, auditability and throughput, not only AI novelty.</p></article>
-        <article><span>Moat</span><b>Factory-specific learning data</b><p>Human-reviewed inspections compound into datasets, retraining candidates and deployment history.</p></article>
-      </div>
-      <div class="container investor-cta">
-        <p>KanbAI is preparing its angel round.</p>
-        <a class="btn btn-secondary" href="mailto:zeynep.balkan2009@gmail.com?subject=KanbAI%20Investor%20Intro">Talk to the founders -></a>
+    <section class="security-strip">
+      <div class="container security-grid">
+        <article><span>Private demo boundary</span><b>Static walkthrough</b><p>No backend, database, object storage or worker is reachable from this demo page.</p></article>
+        <article><span>Upload privacy</span><b>Browser local</b><p>Uploaded images stay inside the browser session and are never transmitted.</p></article>
+        <article><span>Factory data</span><b>Not accepted here</b><p>Real pilot data belongs in a controlled tenant with rotated secrets and HTTPS.</p></article>
       </div>
     </section>
 
     <section class="section final-cta">
       <div class="container final-grid">
         <div><div class="eyebrow">KANBAI</div><h2>Make every quality decision measurable, reviewable and reusable.</h2></div>
-        <div class="final-actions"><a class="btn btn-primary btn-lg" href="product-demo.html">Run demo</a><a class="btn btn-secondary btn-lg" href="#pilot">Pilot plan</a></div>
+        <div class="final-actions"><a class="btn btn-primary btn-lg" href="product-demo.html?sample=2">Run demo</a><a class="btn btn-secondary btn-lg" href="#pilot">Pilot plan</a></div>
       </div>
     </section>
   </main>
@@ -181,7 +138,7 @@
   <footer>
     <div class="container footer-grid">
       <div><a class="brand" href="#top"><span>Kanb</span><b>AI</b></a><p>AI-powered quality intelligence for manufacturing.</p></div>
-      <div class="footer-links"><a href="product-demo.html">Interactive demo</a><a href="#pilot">Pilot</a><a href="#investors">Investors</a><a href="mailto:zeynep.balkan2009@gmail.com">Contact</a></div>
+      <div class="footer-links"><a href="product-demo.html?sample=2">Interactive demo</a><a href="#market">Market</a><a href="#pilot">Pilot</a><a href="mailto:zeynep.balkan2009@gmail.com">Contact</a></div>
       <small>2026 KanbAI</small>
     </div>
   </footer>

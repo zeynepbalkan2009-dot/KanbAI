@@ -176,6 +176,7 @@ export const devicesApi = {
 export const setupApi = {
   stations: (params?: { active_only?: boolean }) => api.get("/stations", { params }),
   productionLines: (params?: { active_only?: boolean }) => api.get("/production-lines", { params }),
+  products: (params?: { active_only?: boolean }) => api.get("/products", { params }),
 };
 
 export const hitlApi = {

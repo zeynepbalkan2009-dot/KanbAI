@@ -5,23 +5,21 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/store/auth";
 import {
-  LayoutDashboard, Activity, LogOut, Camera,
-  Wifi, WifiOff, ChevronRight, Brain, ClipboardCheck, Building2, Presentation, TabletSmartphone, Map, Target,
+  LayoutDashboard, Activity, LogOut,
+  Wifi, WifiOff, ChevronRight, Brain, ClipboardCheck, Building2, TabletSmartphone, Map, Target,
 } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useInspectionStore } from "@/lib/store/inspections";
 import toast from "react-hot-toast";
 
 const NAV = [
-  { href: "/dashboard", label: "Workspace", icon: LayoutDashboard },
-  { href: "/dashboard/pilot", label: "Pilot Workspace", icon: Target },
-  { href: "/dashboard/factory", label: "Factory Overview", icon: Map },
-  { href: "/dashboard/capture", label: "Capture", icon: Camera },
-  { href: "/dashboard/devices", label: "Factory Devices", icon: TabletSmartphone },
-  { href: "/dashboard/inspections", label: "Inspection Records", icon: Activity },
-  { href: "/dashboard/hitl", label: "Review Queue", icon: ClipboardCheck },
-  { href: "/dashboard/mlops", label: "Learning Ops", icon: Brain },
-  { href: "/dashboard/executive", label: "Investor Demo", icon: Presentation },
+  { href: "/dashboard", label: "Kontrol Merkezi", icon: LayoutDashboard },
+  { href: "/dashboard/pilot", label: "Pilot Akisi", icon: Target },
+  { href: "/dashboard/factory", label: "Fabrika Gorunumu", icon: Map },
+  { href: "/dashboard/devices", label: "Telefon ve Cihazlar", icon: TabletSmartphone },
+  { href: "/dashboard/inspections", label: "Muayene Kayitlari", icon: Activity },
+  { href: "/dashboard/hitl", label: "Inceleme Kuyrugu", icon: ClipboardCheck },
+  { href: "/dashboard/mlops", label: "Model ve Veri", icon: Brain },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -77,6 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthenticated) return null;
 
   const systemOnline = connected || apiReady;
+  const factoryName = user?.email?.includes("germaksan") ? "GERMAKSAN Pilot" : "KanbAI Factory";
   const connectionLabel = connected
     ? "Canli veri aktif"
     : apiReady
@@ -109,7 +108,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Building2 size={14} />
               Factory account
             </div>
-            <p className="mt-2 truncate text-sm font-medium text-white">Demo Fabrika A</p>
+            <p className="mt-2 truncate text-sm font-medium text-white">{factoryName}</p>
             <p className="mt-1 truncate text-xs text-white/35">{user?.full_name} / {user?.role}</p>
           </div>
         </div>

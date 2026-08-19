@@ -13,8 +13,8 @@ import { hitlApi, inspectionsApi } from "@/lib/api";
 type QueueItem = {
   id: string;
   device_id: string;
-  decision: "review" | "fail" | "pass" | "pending" | "error";
-  confidence?: number;
+  decision: "review" | "fail" | "pass" | "pending" | "error" | "out_of_scope";
+  confidence?: number | null;
   defects?: Array<{ class_name: string; confidence: number; bbox?: number[] }>;
   image_key: string;
   created_at: string;
@@ -26,22 +26,28 @@ type HitlStats = {
   dataset_contributions: number;
 };
 
-type InboxFilter = "all" | "pass" | "fail" | "review";
+type InboxFilter = "all" | "pass" | "fail" | "review" | "out_of_scope";
 
-const labelOptions = ["crack", "edge_chip", "scratch", "dent", "surface_void", "good"];
+const labelOptions = ["crack", "edge_chip", "scratch", "dent", "surface_void", "good", "out_of_scope"];
 
 function DecisionBadge({ decision }: { decision: string }) {
   const classes: Record<string, string> = {
     fail: "border-red-200 bg-red-50 text-red-700",
     review: "border-amber-200 bg-amber-50 text-amber-700",
     pass: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    out_of_scope: "border-slate-200 bg-slate-100 text-slate-600",
     pending: "border-slate-200 bg-slate-50 text-slate-500",
   };
   return (
     <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${classes[decision] ?? classes.pending}`}>
-      {decision.toUpperCase()}
+      {decision === "out_of_scope" ? "OUT OF SCOPE" : decision.toUpperCase()}
     </span>
   );
+}
+
+function filterLabel(filter: InboxFilter) {
+  if (filter === "out_of_scope") return "Scope";
+  return filter;
 }
 
 function Stat({
@@ -68,6 +74,7 @@ function Stat({
 
 function casePriority(item?: QueueItem) {
   if (!item) return "Normal";
+  if (item.decision === "out_of_scope") return "Scope check";
   if (item.decision === "fail" && (item.confidence ?? 0) >= 0.9) return "P1 Critical";
   if (item.decision === "fail") return "P2 High";
   return "P3 Review";
@@ -122,7 +129,7 @@ export default function HitlPage() {
   }, [load]);
 
   useEffect(() => {
-    setCorrectedLabel(selected?.defects?.[0]?.class_name ?? (selected?.decision === "pass" ? "good" : "scratch"));
+    setCorrectedLabel(selected?.defects?.[0]?.class_name ?? (selected?.decision === "pass" ? "good" : selected?.decision === "out_of_scope" ? "out_of_scope" : "scratch"));
   }, [selected?.id]);
 
   useEffect(() => {
@@ -213,8 +220,8 @@ export default function HitlPage() {
                 />
               </div>
 
-              <div className="mt-3 grid grid-cols-4 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
-                {(["all", "pass", "fail", "review"] as InboxFilter[]).map((item) => (
+              <div className="mt-3 grid grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 sm:grid-cols-5">
+                {(["all", "pass", "fail", "review", "out_of_scope"] as InboxFilter[]).map((item) => (
                   <button
                     key={item}
                     onClick={() => setFilter(item)}
@@ -222,7 +229,7 @@ export default function HitlPage() {
                       filter === item ? "bg-white text-[#0b1020] shadow-sm" : "text-slate-500 hover:text-slate-950"
                     }`}
                   >
-                    {item}
+                    {filterLabel(item)}
                   </button>
                 ))}
               </div>
@@ -248,7 +255,7 @@ export default function HitlPage() {
                       <p className="mt-2 font-mono text-xs text-slate-700">{item.id.split("-")[0]}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs font-medium text-slate-900">{Math.round((item.confidence ?? 0) * 100)}%</p>
+                      <p className="text-xs font-medium text-slate-900">{item.decision !== "out_of_scope" && item.confidence ? `${Math.round(item.confidence * 100)}%` : "--"}</p>
                       <p className="mt-1 text-xs text-slate-400">{casePriority(item)}</p>
                     </div>
                   </div>
@@ -280,15 +287,17 @@ export default function HitlPage() {
               ) : (
                 <div className="absolute inset-8 rounded-[28px] border border-slate-200 bg-white shadow-inner" />
               )}
-              <div className={`absolute left-[19%] top-[31%] h-[29%] w-[38%] rounded-lg border-2 ${
-                selected?.decision === "pass" ? "border-emerald-500" : selected?.decision === "fail" ? "border-red-500" : "border-[#FF7A00]"
-              }`}>
-                <span className={`-mt-8 inline-flex rounded-md px-2 py-1 text-xs font-semibold ${
-                  selected?.decision === "pass" ? "bg-emerald-600 text-white" : selected?.decision === "fail" ? "bg-red-600 text-white" : "bg-[#FF7A00] text-black"
+              {selected?.decision !== "out_of_scope" && (
+                <div className={`absolute left-[19%] top-[31%] h-[29%] w-[38%] rounded-lg border-2 ${
+                  selected?.decision === "pass" ? "border-emerald-500" : selected?.decision === "fail" ? "border-red-500" : "border-[#FF7A00]"
                 }`}>
-                  {selected?.defects?.[0]?.class_name ?? (selected?.decision === "pass" ? "good part" : "unlabeled anomaly")} {selected?.confidence ? Math.round(selected.confidence * 100) : 91}%
-                </span>
-              </div>
+                  <span className={`-mt-8 inline-flex rounded-md px-2 py-1 text-xs font-semibold ${
+                    selected?.decision === "pass" ? "bg-emerald-600 text-white" : selected?.decision === "fail" ? "bg-red-600 text-white" : "bg-[#FF7A00] text-black"
+                  }`}>
+                    {selected?.defects?.[0]?.class_name ?? (selected?.decision === "pass" ? "good part" : "unlabeled anomaly")} {selected?.confidence ? Math.round(selected.confidence * 100) : 91}%
+                  </span>
+                </div>
+              )}
               <div className="absolute bottom-5 left-5 right-5 rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm backdrop-blur">
                 <p className="text-xs text-slate-600">{selected?.image_key ?? "Queue is empty"}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -297,6 +306,11 @@ export default function HitlPage() {
                       {defect.class_name} {Math.round(defect.confidence * 100)}%
                     </span>
                   ))}
+                  {selected?.decision === "out_of_scope" && (
+                    <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                      not an industrial metal part
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -312,7 +326,9 @@ export default function HitlPage() {
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">Next step</p>
-                <p className="mt-1 text-sm font-semibold text-[#0b1020]">Human validation</p>
+                <p className="mt-1 text-sm font-semibold text-[#0b1020]">
+                  {selected?.decision === "out_of_scope" ? "Reject from AI scoring" : "Human validation"}
+                </p>
               </div>
             </div>
           </section>

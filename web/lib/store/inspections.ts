@@ -8,8 +8,8 @@ export interface Inspection {
   device_id: string;
   image_key: string;
   image_url?: string;
-  decision: "pass" | "fail" | "review" | "pending" | "error";
-  confidence?: number;
+  decision: "pass" | "fail" | "review" | "pending" | "error" | "out_of_scope";
+  confidence?: number | null;
   defects?: Array<{ class_name: string; confidence: number; bbox: number[] }>;
   operator_decision?: string;
   inference_latency_ms?: number;

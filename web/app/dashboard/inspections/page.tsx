@@ -24,13 +24,14 @@ interface Device {
   location_label?: string;
 }
 
-type FilterKey = "all" | "fail" | "review" | "pass" | "pending";
+type FilterKey = "all" | "fail" | "review" | "pass" | "pending" | "out_of_scope";
 
 const filters: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "All" },
   { key: "fail", label: "Defects" },
   { key: "review", label: "Needs review" },
   { key: "pass", label: "Passed" },
+  { key: "out_of_scope", label: "Out of scope" },
   { key: "pending", label: "Processing" },
 ];
 
@@ -38,12 +39,13 @@ function decisionBadgeClasses(decision: string) {
   if (decision === "pass") return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (decision === "fail") return "border-red-200 bg-red-50 text-red-700";
   if (decision === "review") return "border-amber-200 bg-amber-50 text-amber-700";
+  if (decision === "out_of_scope") return "border-slate-200 bg-slate-100 text-slate-600";
   if (decision === "error") return "border-red-200 bg-red-50 text-red-700";
   return "border-slate-200 bg-slate-50 text-slate-500";
 }
 
 function DecisionBadge({ decision }: { decision: string }) {
-  const label = decision === "fail" ? "FAIL" : decision === "pass" ? "PASS" : decision.toUpperCase();
+  const label = decision === "fail" ? "FAIL" : decision === "pass" ? "PASS" : decision === "out_of_scope" ? "OUT OF SCOPE" : decision.toUpperCase();
   return (
     <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${decisionBadgeClasses(decision)}`}>
       {label}
@@ -55,11 +57,13 @@ function nextAction(decision: string, operatorDecision?: string) {
   if (operatorDecision) return "Closed";
   if (decision === "pending") return "AI processing";
   if (decision === "error") return "Retry required";
+  if (decision === "out_of_scope") return "Rejected by scope gate";
   if (decision === "pass") return "Pilot review";
   return "Quality review";
 }
 
 function defectLabel(item?: Inspection | null) {
+  if (item?.decision === "out_of_scope") return "Not an industrial metal part";
   return item?.defects?.map((d) => d.class_name).join(", ") || "No defect label";
 }
 
@@ -231,7 +235,7 @@ export default function InspectionsPage() {
                       </div>
                     </td>
                     <td className="px-3 py-3"><DecisionBadge decision={item.decision} /></td>
-                    <td className="px-3 py-3 text-slate-700">{item.confidence ? `${Math.round(item.confidence * 100)}%` : "--"}</td>
+                    <td className="px-3 py-3 text-slate-700">{item.decision !== "out_of_scope" && item.confidence ? `${Math.round(item.confidence * 100)}%` : "--"}</td>
                     <td className="px-3 py-3 text-slate-600">{defectLabel(item)}</td>
                     <td className="px-3 py-3 text-slate-500">Quality team</td>
                     <td className="px-3 py-3 text-slate-700">{nextAction(item.decision, item.operator_decision)}</td>
@@ -291,7 +295,7 @@ export default function InspectionsPage() {
                       <p className="mt-3 text-sm">Resim yukleniyor</p>
                     </div>
                   )}
-                  {imageUrl && selected.decision !== "pending" && (
+                  {imageUrl && selected.decision !== "pending" && selected.decision !== "out_of_scope" && (
                     <div className={`absolute left-[18%] top-[24%] h-[32%] w-[42%] rounded-md border-[5px] ${
                       selected.decision === "pass" ? "border-emerald-500" : selected.decision === "fail" ? "border-red-500" : "border-[#FF7A00]"
                     }`}>
@@ -313,7 +317,7 @@ export default function InspectionsPage() {
                 <div className="rounded-xl border border-slate-200 bg-white p-4">
                   <p className="text-xs text-slate-500">Confidence</p>
                   <p className="mt-1 text-2xl font-semibold text-[#0b1020]">
-                    {selected.confidence ? `${Math.round(selected.confidence * 100)}%` : "--"}
+                    {selected.decision !== "out_of_scope" && selected.confidence ? `${Math.round(selected.confidence * 100)}%` : "--"}
                   </p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -330,6 +334,8 @@ export default function InspectionsPage() {
                 <p className="mt-2 text-sm text-slate-500">
                   {selected.operator_decision
                     ? `Final quality decision: ${selected.operator_decision.toUpperCase()}`
+                    : selected.decision === "out_of_scope"
+                      ? "Bu gorsel endustriyel metal parca olarak algilanmadi; AI puanlama yapmadi."
                     : "Pilot modda bu kayit kalite sorumlusunun onayini bekler."}
                 </p>
                 <div className="mt-4 flex items-center gap-2 text-xs text-slate-500">

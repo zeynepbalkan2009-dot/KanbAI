@@ -26,7 +26,7 @@ class HITLDecisionIn(BaseModel):
 
 def review_queue_decisions() -> list[str]:
     if settings.pilot_mode:
-        return ["pass", "review", "fail"]
+        return ["pass", "review", "fail", "out_of_scope"]
     return ["review", "fail"]
 
 

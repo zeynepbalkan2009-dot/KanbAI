@@ -40,8 +40,8 @@ type Product = {
 
 type InspectionResult = {
   id: string;
-  decision: "pass" | "fail" | "review" | "pending" | "error";
-  confidence?: number;
+  decision: "pass" | "fail" | "review" | "pending" | "error" | "out_of_scope";
+  confidence?: number | null;
   defects?: Array<{ class_name: string; confidence: number }>;
   inference_latency_ms?: number;
 };
@@ -54,6 +54,7 @@ function resultLabel(decision?: InspectionResult["decision"]) {
   if (decision === "pass") return "PASS";
   if (decision === "fail") return "FAIL";
   if (decision === "review") return "REVIEW";
+  if (decision === "out_of_scope") return "OUT OF SCOPE";
   if (decision === "error") return "ERROR";
   return "AI ANALYZING";
 }
@@ -62,6 +63,7 @@ function resultTone(decision?: InspectionResult["decision"]) {
   if (decision === "pass") return "border-emerald-400/30 bg-emerald-400/10 text-emerald-100";
   if (decision === "fail" || decision === "error") return "border-red-400/30 bg-red-400/10 text-red-100";
   if (decision === "review") return "border-[#FF7A00]/40 bg-[#FF7A00]/10 text-orange-100";
+  if (decision === "out_of_scope") return "border-slate-500/40 bg-slate-500/10 text-slate-100";
   return "border-[#00C2FF]/30 bg-[#00C2FF]/10 text-sky-100";
 }
 
@@ -392,7 +394,7 @@ export default function OperatorCapturePage() {
                   <RefreshCw className="animate-spin" size={30} />
                 ) : result?.decision === "pass" ? (
                   <CheckCircle2 size={32} />
-                ) : result?.decision === "fail" || result?.decision === "error" ? (
+                ) : result?.decision === "fail" || result?.decision === "error" || result?.decision === "out_of_scope" ? (
                   <XCircle size={32} />
                 ) : (
                   <ShieldCheck size={32} />
@@ -402,7 +404,7 @@ export default function OperatorCapturePage() {
                 <div className="rounded-xl bg-black/20 p-3">
                   <p className="opacity-55">Guven</p>
                   <p className="mt-1 text-xl font-semibold">
-                    {result?.confidence ? `${Math.round(result.confidence * 100)}%` : "--"}
+                    {result?.decision !== "out_of_scope" && result?.confidence ? `${Math.round(result.confidence * 100)}%` : "--"}
                   </p>
                 </div>
                 <div className="rounded-xl bg-black/20 p-3">
@@ -414,7 +416,9 @@ export default function OperatorCapturePage() {
               </div>
               <p className="mt-4 text-sm leading-6 opacity-75">
                 {inspectionId
-                  ? `Muayene kaydi: ${inspectionId.slice(0, 8)}. Pilot modda PASS dahil her fotograf kalite sorumlusunun Inceleme Kuyrugu'na duser.`
+                  ? result?.decision === "out_of_scope"
+                    ? `Muayene kaydi: ${inspectionId.slice(0, 8)}. Endustriyel metal parca algilanmadi; AI puanlama yapmadi.`
+                    : `Muayene kaydi: ${inspectionId.slice(0, 8)}. Pilot modda PASS dahil her fotograf kalite sorumlusunun Inceleme Kuyrugu'na duser.`
                   : "Henuz fotograf gonderilmedi."}
               </p>
             </section>

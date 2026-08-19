@@ -28,6 +28,7 @@ function decisionLabel(decision?: string) {
   if (decision === "pass") return "OK";
   if (decision === "fail") return "NOK";
   if (decision === "review") return "REVIEW";
+  if (decision === "out_of_scope") return "SCOPE";
   if (decision === "pending") return "WAIT";
   return "--";
 }
@@ -36,6 +37,7 @@ function decisionColor(decision?: string) {
   if (decision === "pass") return "border-emerald-500 bg-emerald-600 text-white";
   if (decision === "fail") return "border-red-500 bg-red-600 text-white";
   if (decision === "review") return "border-[#FF7A00] bg-[#FF7A00] text-black";
+  if (decision === "out_of_scope") return "border-slate-300 bg-slate-100 text-slate-700";
   return "border-slate-300 bg-slate-600 text-white";
 }
 
@@ -43,6 +45,7 @@ function frameColor(decision?: string) {
   if (decision === "pass") return "border-emerald-500";
   if (decision === "fail") return "border-red-500";
   if (decision === "review") return "border-[#FF7A00]";
+  if (decision === "out_of_scope") return "border-slate-300";
   return "border-slate-400";
 }
 
@@ -50,6 +53,7 @@ function decisionText(decision?: string) {
   if (decision === "pass") return "text-emerald-700";
   if (decision === "fail") return "text-red-700";
   if (decision === "review") return "text-orange-700";
+  if (decision === "out_of_scope") return "text-slate-500";
   return "text-slate-500";
 }
 
@@ -168,7 +172,7 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {latest && imageUrl && (
+              {latest && imageUrl && latest.decision !== "out_of_scope" && (
                 <div className={`absolute inset-x-[12%] top-[18%] bottom-[12%] rounded-md border-[6px] shadow-[0_10px_35px_rgba(15,23,42,.2)] ${frameColor(latest.decision)}`}>
                   <div className={`absolute -bottom-1 left-0 rounded-tr-md px-4 py-2 text-2xl font-black ${decisionColor(latest.decision)}`}>
                     {decisionLabel(latest.decision)}
@@ -199,7 +203,7 @@ export default function DashboardPage() {
               <div className="rounded-xl bg-slate-50 p-3">
                 <p className="text-xs text-slate-500">Confidence</p>
                 <p className="mt-1 text-2xl font-semibold text-[#0b1020]">
-                  {latest?.confidence ? `${Math.round(latest.confidence * 100)}%` : "--"}
+                  {latest?.decision !== "out_of_scope" && latest?.confidence ? `${Math.round(latest.confidence * 100)}%` : "--"}
                 </p>
               </div>
               <div className="rounded-xl bg-slate-50 p-3">
@@ -208,7 +212,9 @@ export default function DashboardPage() {
               </div>
             </div>
             <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">
-              {latest?.defects?.map((defect) => defect.class_name).join(", ") || "Henuz hata etiketi yok"}
+              {latest?.decision === "out_of_scope"
+                ? "Endustriyel metal parca algilanmadi; AI puanlama yapmadi."
+                : latest?.defects?.map((defect) => defect.class_name).join(", ") || "Henuz hata etiketi yok"}
             </p>
           </section>
 

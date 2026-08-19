@@ -41,3 +41,4 @@ httpx==0.27.0
 # Utilities
 python-dateutil==2.9.0
 uuid6==2024.1.12
+Pillow==10.4.0

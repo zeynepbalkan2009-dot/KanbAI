@@ -44,8 +44,8 @@ class DefectDetection:
 
 @dataclass
 class InferenceResult:
-    decision: str              # "pass" | "fail" | "review"
-    confidence: float
+    decision: str              # "pass" | "fail" | "review" | "out_of_scope"
+    confidence: Optional[float]
     defects: list[DefectDetection] = field(default_factory=list)
     latency_ms: int = 0
     model_version: str = "unknown"
@@ -54,7 +54,7 @@ class InferenceResult:
     def to_dict(self) -> dict:
         return {
             "decision": self.decision,
-            "confidence": round(self.confidence, 4),
+            "confidence": round(self.confidence, 4) if self.confidence is not None else None,
             "defects": [
                 {
                     "class_name": d.class_name,
@@ -103,7 +103,17 @@ class MockInferenceService:
         delay = random.uniform(settings.ai_mock_delay_min, settings.ai_mock_delay_max)
         await asyncio.sleep(delay)
 
-        result = self._generate_result()
+        is_candidate, scope_metrics = self._is_industrial_metal_candidate(image_path)
+        if not is_candidate:
+            result = InferenceResult(
+                decision="out_of_scope",
+                confidence=None,
+                defects=[],
+                model_version=self.VERSION,
+                raw_output={"scope_gate": scope_metrics},
+            )
+        else:
+            result = self._generate_result()
         result.latency_ms = int((time.monotonic() - start) * 1000)
 
         logger.info(
@@ -113,8 +123,114 @@ class MockInferenceService:
             confidence=result.confidence,
             defect_count=len(result.defects),
             latency_ms=result.latency_ms,
+            scope_metrics=scope_metrics,
         )
         return result
+
+    @staticmethod
+    def _is_industrial_metal_candidate(image_path: str) -> tuple[bool, dict]:
+        """
+        Lightweight scope gate for mock mode.
+
+        This is not defect detection. It only prevents demos from assigning fake
+        defect scores to obviously unrelated screenshots, games, wood photos, or
+        colorful graphics before a real model is connected.
+        """
+        try:
+            import colorsys
+            import math
+            from PIL import Image, ImageFile
+
+            ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+            with Image.open(image_path) as source:
+                source.thumbnail((180, 180))
+                image = source.convert("RGB")
+                pixels = list(image.getdata())
+
+            if not pixels:
+                return True, {"scope": "unknown", "reason": "image_empty"}
+
+            count = len(pixels)
+            high_sat_count = 0
+            very_high_sat_count = 0
+            low_sat_count = 0
+            neutral_mid_count = 0
+            gray_metal_count = 0
+            warm_material_count = 0
+            rg_values: list[float] = []
+            yb_values: list[float] = []
+
+            for red, green, blue in pixels:
+                hue, sat, val = colorsys.rgb_to_hsv(red / 255.0, green / 255.0, blue / 255.0)
+                hue_degrees = hue * 360
+
+                if sat > 0.48 and val > 0.18:
+                    high_sat_count += 1
+                if sat > 0.62 and val > 0.20:
+                    very_high_sat_count += 1
+                if sat < 0.28:
+                    low_sat_count += 1
+                if sat < 0.24 and 0.12 < val < 0.88:
+                    neutral_mid_count += 1
+                if sat < 0.30 and 0.16 < val < 0.78:
+                    gray_metal_count += 1
+                if 16 <= hue_degrees <= 76 and sat > 0.23 and val > 0.32:
+                    warm_material_count += 1
+
+                rg_values.append(abs(red - green))
+                yb_values.append(abs(0.5 * (red + green) - blue))
+
+            def ratio(value: int) -> float:
+                return value / count
+
+            def mean(values: list[float]) -> float:
+                return sum(values) / len(values)
+
+            def stddev(values: list[float], avg: float) -> float:
+                return math.sqrt(sum((value - avg) ** 2 for value in values) / len(values))
+
+            rg_mean = mean(rg_values)
+            yb_mean = mean(yb_values)
+            colorfulness = (
+                math.sqrt(stddev(rg_values, rg_mean) ** 2 + stddev(yb_values, yb_mean) ** 2)
+                + 0.3 * math.sqrt(rg_mean ** 2 + yb_mean ** 2)
+            )
+
+            high_saturation = ratio(high_sat_count)
+            very_high_saturation = ratio(very_high_sat_count)
+            low_saturation = ratio(low_sat_count)
+            neutral_mid = ratio(neutral_mid_count)
+            gray_metal = ratio(gray_metal_count)
+            warm_material = ratio(warm_material_count)
+
+            obvious_nonindustrial = (
+                (high_saturation > 0.32)
+                or (very_high_saturation > 0.18 and colorfulness > 42)
+                or (colorfulness > 58)
+                or (warm_material > 0.30 and gray_metal < 0.18)
+            )
+            metal_like = (
+                (gray_metal > 0.18 and high_saturation < 0.26 and colorfulness < 54)
+                or (neutral_mid > 0.34 and high_saturation < 0.22)
+                or (neutral_mid > 0.25 and gray_metal > 0.10 and warm_material < 0.02 and high_saturation < 0.04 and colorfulness < 22)
+                or (low_saturation > 0.72 and gray_metal > 0.16 and neutral_mid > 0.24 and very_high_saturation < 0.16 and warm_material < 0.30)
+            )
+
+            metrics = {
+                "scope": "industrial_metal" if metal_like and not obvious_nonindustrial else "out_of_scope",
+                "high_saturation": round(high_saturation, 4),
+                "very_high_saturation": round(very_high_saturation, 4),
+                "low_saturation": round(low_saturation, 4),
+                "neutral_mid": round(neutral_mid, 4),
+                "gray_metal": round(gray_metal, 4),
+                "warm_material": round(warm_material, 4),
+                "colorfulness": round(colorfulness, 2),
+            }
+            return metal_like and not obvious_nonindustrial, metrics
+        except Exception as exc:
+            logger.warning("mock_scope_gate_failed", image_path=image_path, error=str(exc))
+            return True, {"scope": "unknown", "reason": "scope_gate_failed"}
 
     def _generate_result(self) -> InferenceResult:
         outcome = random.choices(

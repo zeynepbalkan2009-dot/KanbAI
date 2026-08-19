@@ -62,10 +62,11 @@ def _object_key_from_image_path(image_path: str) -> str:
 
 def _prepare_inference_image_path(inspection, image_path: str) -> tuple[str, str | None]:
     """
-    YOLO needs a local file path. Uploaded inspections are persisted in MinIO,
-    so opt-in real inference downloads the object to a temporary worker file.
+    Inference engines and the mock scope gate need a local file path. Uploaded
+    inspections are persisted in MinIO, so eligible modes download the object to
+    a temporary worker file.
     """
-    if settings.ai_inference_mode != "yolo":
+    if settings.ai_inference_mode not in {"mock", "yolo"}:
         return image_path, None
 
     if image_path and Path(image_path).exists():
@@ -202,7 +203,7 @@ def run_inspection(self: Task, inspection_id: str, image_path: str, tenant_id: s
 
         logger.info(
             f"[inference] complete — inspection={inspection_id} "
-            f"decision={result.decision} confidence={result.confidence:.3f} "
+            f"decision={result.decision} confidence={result.confidence if result.confidence is not None else 'n/a'} "
             f"latency={result.latency_ms}ms"
         )
         return event

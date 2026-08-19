@@ -20,8 +20,8 @@ export interface WSEvent {
   type: WSEventType;
   inspection_id?: string;
   task_id?: string;
-  decision?: "pass" | "fail" | "review";
-  confidence?: number;
+  decision?: "pass" | "fail" | "review" | "out_of_scope";
+  confidence?: number | null;
   defect_count?: number;
   defects?: Array<{
     class_name: string;

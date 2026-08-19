@@ -26,16 +26,16 @@ type HitlStats = {
   dataset_contributions: number;
 };
 
-type InboxFilter = "all" | "fail" | "review";
+type InboxFilter = "all" | "pass" | "fail" | "review";
 
 const labelOptions = ["crack", "edge_chip", "scratch", "dent", "surface_void", "good"];
 
 function DecisionBadge({ decision }: { decision: string }) {
   const classes: Record<string, string> = {
-    fail: "border-red-500/30 bg-red-500/10 text-red-300",
-    review: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-    pass: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-    pending: "border-white/10 bg-white/5 text-white/50",
+    fail: "border-red-200 bg-red-50 text-red-700",
+    review: "border-amber-200 bg-amber-50 text-amber-700",
+    pass: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    pending: "border-slate-200 bg-slate-50 text-slate-500",
   };
   return (
     <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${classes[decision] ?? classes.pending}`}>
@@ -56,12 +56,12 @@ function Stat({
   tone: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-[#0f131c] p-4">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-white/45">{label}</p>
+        <p className="text-xs text-slate-500">{label}</p>
         <Icon className={tone} size={17} />
       </div>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      <p className="mt-2 text-2xl font-semibold text-[#0b1020]">{value}</p>
     </div>
   );
 }
@@ -172,56 +172,56 @@ export default function HitlPage() {
   };
 
   return (
-    <div className="min-h-full bg-[#090B10] p-4 md:p-6">
+    <div className="min-h-full bg-[#f5f7fb] p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-5">
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#00C2FF]">Quality CRM</p>
-            <h1 className="mt-1 text-2xl font-semibold text-white">Review Queue</h1>
-            <p className="mt-1 text-sm text-white/50">
-              Triage AI exceptions, correct labels, and convert inspections into governed training data.
+            <p className="text-xs font-semibold uppercase text-sky-600">Quality CRM</p>
+            <h1 className="mt-1 text-3xl font-semibold text-[#0b1020]">Review Queue</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Telefondan gelen parcalari onayla, etiketi duzelt ve veri setine ekle.
             </p>
           </div>
-          <button onClick={load} className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10">
+          <button onClick={load} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
             Refresh
           </button>
         </header>
 
         <div className="grid gap-3 md:grid-cols-3">
-          <Stat label="Open cases" value={stats?.pending_reviews ?? queue.length} icon={TimerReset} tone="text-amber-300" />
-          <Stat label="Closed reviews" value={stats?.completed_reviews ?? 0} icon={UserRoundCheck} tone="text-emerald-300" />
-          <Stat label="Dataset records" value={stats?.dataset_contributions ?? 0} icon={Database} tone="text-[#00C2FF]" />
+          <Stat label="Open cases" value={stats?.pending_reviews ?? queue.length} icon={TimerReset} tone="text-amber-600" />
+          <Stat label="Closed reviews" value={stats?.completed_reviews ?? 0} icon={UserRoundCheck} tone="text-emerald-600" />
+          <Stat label="Dataset records" value={stats?.dataset_contributions ?? 0} icon={Database} tone="text-sky-600" />
         </div>
 
         <div className="grid gap-5 xl:grid-cols-[390px_minmax(0,1fr)_350px]">
-          <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0f131c]">
-            <div className="border-b border-white/10 p-4">
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 p-4">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-[#0b1020]">
                   <ClipboardCheck size={16} />
                   Case inbox
                 </h2>
-                <span className="rounded-full bg-white/5 px-2 py-1 text-xs text-white/45">{filteredQueue.length}</span>
+                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">{filteredQueue.length}</span>
               </div>
 
-              <div className="mt-3 flex items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm">
-                <Search size={15} className="text-white/35" />
+              <div className="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                <Search size={15} className="text-slate-400" />
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search case or defect"
-                  className="w-full bg-transparent text-white outline-none placeholder:text-white/30"
+                  className="w-full bg-transparent text-slate-900 outline-none placeholder:text-slate-400"
                 />
               </div>
 
-              <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-white/10 bg-black/20 p-1">
-                {(["all", "fail", "review"] as InboxFilter[]).map((item) => (
+              <div className="mt-3 grid grid-cols-4 gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1">
+                {(["all", "pass", "fail", "review"] as InboxFilter[]).map((item) => (
                   <button
                     key={item}
                     onClick={() => setFilter(item)}
                     className={`rounded-md px-2 py-1.5 text-xs font-medium capitalize ${
-                      filter === item ? "bg-white/10 text-white" : "text-white/45 hover:text-white"
+                      filter === item ? "bg-white text-[#0b1020] shadow-sm" : "text-slate-500 hover:text-slate-950"
                     }`}
                   >
                     {item}
@@ -232,7 +232,7 @@ export default function HitlPage() {
 
             <div className="max-h-[650px] overflow-y-auto p-2">
               {filteredQueue.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center text-white/40">
+                <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center text-slate-400">
                   <CheckCircle2 size={28} />
                   <p className="text-sm">No open cases</p>
                 </div>
@@ -241,21 +241,21 @@ export default function HitlPage() {
                   key={item.id}
                   onClick={() => setSelectedId(item.id)}
                   className={`mb-2 w-full rounded-xl border p-3 text-left transition ${
-                    selected?.id === item.id ? "border-[#00C2FF]/45 bg-[#00C2FF]/10" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+                    selected?.id === item.id ? "border-sky-300 bg-sky-50" : "border-slate-200 bg-white hover:bg-slate-50"
                   }`}
                 >
                   <div className="mb-3 flex items-start justify-between gap-2">
                     <div>
                       <DecisionBadge decision={item.decision} />
-                      <p className="mt-2 font-mono text-xs text-white/70">{item.id.split("-")[0]}</p>
+                      <p className="mt-2 font-mono text-xs text-slate-700">{item.id.split("-")[0]}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs font-medium text-white">{Math.round((item.confidence ?? 0) * 100)}%</p>
-                      <p className="mt-1 text-xs text-white/35">{casePriority(item)}</p>
+                      <p className="text-xs font-medium text-slate-900">{Math.round((item.confidence ?? 0) * 100)}%</p>
+                      <p className="mt-1 text-xs text-slate-400">{casePriority(item)}</p>
                     </div>
                   </div>
-                  <p className="truncate text-xs text-white/45">{item.defects?.map((d) => d.class_name).join(", ") || "No label"}</p>
-                  <div className="mt-3 flex items-center justify-between text-xs text-white/35">
+                  <p className="truncate text-xs text-slate-500">{item.defects?.map((d) => d.class_name).join(", ") || "No label"}</p>
+                  <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
                     <span>Owner: Quality team</span>
                     <span>{ageLabel(item)}</span>
                   </div>
@@ -264,34 +264,38 @@ export default function HitlPage() {
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0f131c]">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
               <div>
-                <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-white">
+                <h2 className="inline-flex items-center gap-2 text-sm font-semibold text-[#0b1020]">
                   <ScanLine size={16} />
                   Case evidence
                 </h2>
-                <p className="mt-1 font-mono text-xs text-white/35">{selected?.id ?? "No case selected"}</p>
+                <p className="mt-1 font-mono text-xs text-slate-400">{selected?.id ?? "No case selected"}</p>
               </div>
               {selected && <DecisionBadge decision={selected.decision} />}
             </div>
 
-            <div className="relative aspect-[16/10] bg-black">
+            <div className="relative aspect-[16/10] bg-slate-50">
               {evidenceUrl ? (
                 <img src={evidenceUrl} alt="Inspection evidence" className="h-full w-full object-contain" />
               ) : (
-                <div className="absolute inset-8 rounded-[28px] border border-white/10 bg-black/20 shadow-inner" />
+                <div className="absolute inset-8 rounded-[28px] border border-slate-200 bg-white shadow-inner" />
               )}
-              <div className="absolute left-[19%] top-[31%] h-[29%] w-[38%] rounded-lg border-2 border-[#FF7A00] bg-[#FF7A00]/10 shadow-[0_0_35px_rgba(255,122,0,.25)]">
-                <span className="-mt-8 inline-flex rounded-md bg-[#FF7A00] px-2 py-1 text-xs font-semibold text-black">
+              <div className={`absolute left-[19%] top-[31%] h-[29%] w-[38%] rounded-lg border-2 ${
+                selected?.decision === "pass" ? "border-emerald-500" : selected?.decision === "fail" ? "border-red-500" : "border-[#FF7A00]"
+              }`}>
+                <span className={`-mt-8 inline-flex rounded-md px-2 py-1 text-xs font-semibold ${
+                  selected?.decision === "pass" ? "bg-emerald-600 text-white" : selected?.decision === "fail" ? "bg-red-600 text-white" : "bg-[#FF7A00] text-black"
+                }`}>
                   {selected?.defects?.[0]?.class_name ?? "crack"} {selected?.confidence ? Math.round(selected.confidence * 100) : 91}%
                 </span>
               </div>
-              <div className="absolute bottom-5 left-5 right-5 rounded-xl border border-white/10 bg-black/50 p-3 backdrop-blur">
-                <p className="text-xs text-white/65">{selected?.image_key ?? "Queue is empty"}</p>
+              <div className="absolute bottom-5 left-5 right-5 rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm backdrop-blur">
+                <p className="text-xs text-slate-600">{selected?.image_key ?? "Queue is empty"}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(selected?.defects ?? []).map((defect) => (
-                    <span key={`${defect.class_name}-${defect.confidence}`} className="rounded-full border border-[#FF7A00]/25 bg-[#FF7A00]/10 px-2 py-1 text-xs text-[#ffd1a3]">
+                    <span key={`${defect.class_name}-${defect.confidence}`} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700">
                       {defect.class_name} {Math.round(defect.confidence * 100)}%
                     </span>
                   ))}
@@ -299,80 +303,80 @@ export default function HitlPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 border-t border-white/10 p-4 md:grid-cols-3">
-              <div className="rounded-xl bg-white/[0.03] p-3">
-                <p className="text-xs text-white/40">Priority</p>
-                <p className="mt-1 text-sm font-semibold text-white">{casePriority(selected)}</p>
+            <div className="grid gap-3 border-t border-slate-200 p-4 md:grid-cols-3">
+              <div className="rounded-xl bg-slate-50 p-3">
+                <p className="text-xs text-slate-500">Priority</p>
+                <p className="mt-1 text-sm font-semibold text-[#0b1020]">{casePriority(selected)}</p>
               </div>
-              <div className="rounded-xl bg-white/[0.03] p-3">
-                <p className="text-xs text-white/40">SLA age</p>
-                <p className="mt-1 text-sm font-semibold text-white">{ageLabel(selected)}</p>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <p className="text-xs text-slate-500">SLA age</p>
+                <p className="mt-1 text-sm font-semibold text-[#0b1020]">{ageLabel(selected)}</p>
               </div>
-              <div className="rounded-xl bg-white/[0.03] p-3">
-                <p className="text-xs text-white/40">Next step</p>
-                <p className="mt-1 text-sm font-semibold text-white">Human validation</p>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <p className="text-xs text-slate-500">Next step</p>
+                <p className="mt-1 text-sm font-semibold text-[#0b1020]">Human validation</p>
               </div>
             </div>
           </section>
 
           <aside className="space-y-4">
-            <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-5">
-              <h2 className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-white">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#0b1020]">
                 <Tag size={16} />
                 Case fields
               </h2>
               <label className="block">
-                <span className="mb-1.5 block text-xs text-white/45">Correct label</span>
-                <select value={correctedLabel} onChange={(event) => setCorrectedLabel(event.target.value)} className="w-full rounded-lg border border-white/10 bg-[#151a24] px-3 py-2.5 text-sm text-white outline-none focus:border-[#00C2FF]">
+                <span className="mb-1.5 block text-xs text-slate-500">Correct label</span>
+                <select value={correctedLabel} onChange={(event) => setCorrectedLabel(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#00C2FF]">
                   {labelOptions.map((label) => <option key={label} value={label}>{label}</option>)}
                 </select>
               </label>
               <label className="mt-4 block">
-                <span className="mb-1.5 block text-xs text-white/45">Resolution notes</span>
-                <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} className="w-full resize-none rounded-lg border border-white/10 bg-[#151a24] px-3 py-2.5 text-sm text-white outline-none focus:border-[#00C2FF]" />
+                <span className="mb-1.5 block text-xs text-slate-500">Resolution notes</span>
+                <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#00C2FF]" />
               </label>
-              <div className="mt-4 rounded-lg border border-[#00C2FF]/25 bg-[#00C2FF]/10 p-3 text-xs text-[#b9efff]">
+              <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-700">
                 <Database className="mr-2 inline" size={14} />
                 Dataset contribution: YES
               </div>
             </section>
 
-            <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-5">
-              <h2 className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-white">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#0b1020]">
                 <ShieldCheck size={16} />
                 Close case
               </h2>
               <div className="grid grid-cols-2 gap-2">
-                <button disabled={!selected || submitting} onClick={() => submit("pass")} className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-3 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/15 disabled:opacity-40">
+                <button disabled={!selected || submitting} onClick={() => submit("pass")} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-40">
                   <CheckCircle2 className="mx-auto mb-1" size={20} /> Approve
                 </button>
-                <button disabled={!selected || submitting} onClick={() => submit("fail")} className="rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-3 text-sm font-semibold text-red-200 hover:bg-red-500/15 disabled:opacity-40">
+                <button disabled={!selected || submitting} onClick={() => submit("fail")} className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-40">
                   <XCircle className="mx-auto mb-1" size={20} /> Reject
                 </button>
-                <button disabled={!selected || submitting} onClick={() => submit("wrong_prediction")} className="col-span-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-3 text-sm font-semibold text-amber-100 hover:bg-amber-500/15 disabled:opacity-40">
+                <button disabled={!selected || submitting} onClick={() => submit("wrong_prediction")} className="col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-40">
                   <AlertTriangle className="mr-2 inline" size={18} /> Wrong prediction
                 </button>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-5">
-              <h2 className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-white">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#0b1020]">
                 <MessageSquareText size={16} />
                 Activity
               </h2>
               <div className="space-y-3 text-xs">
                 <div className="flex gap-3">
-                  <Clock3 size={14} className="mt-0.5 text-white/35" />
+                  <Clock3 size={14} className="mt-0.5 text-slate-400" />
                   <div>
-                    <p className="text-white/70">AI flagged case for review</p>
-                    <p className="mt-0.5 text-white/35">{ageLabel(selected)}</p>
+                    <p className="text-slate-700">Pilot sample is waiting for human review</p>
+                    <p className="mt-0.5 text-slate-400">{ageLabel(selected)}</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <FileText size={14} className="mt-0.5 text-white/35" />
+                  <FileText size={14} className="mt-0.5 text-slate-400" />
                   <div>
-                    <p className="text-white/70">Dataset record will be created on close</p>
-                    <p className="mt-0.5 text-white/35">Pending quality decision</p>
+                    <p className="text-slate-700">Dataset record will be created on close</p>
+                    <p className="mt-0.5 text-slate-400">Pending quality decision</p>
                   </div>
                 </div>
               </div>

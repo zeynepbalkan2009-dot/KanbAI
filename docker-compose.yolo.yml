@@ -1,0 +1,14 @@
+# Compose overlay for real YOLO inference on the controlled laptop pilot.
+# Use only when a local model file exists under backend/models/.
+services:
+  worker-inference:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+      args:
+        REQUIREMENTS_FILE: requirements.txt
+    volumes:
+      - ./backend:/app
+      - ./mlops:/app/mlops
+      - ./backend/models:/app/models:ro

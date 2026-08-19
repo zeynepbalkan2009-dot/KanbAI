@@ -9,13 +9,22 @@ $ErrorActionPreference = "Stop"
 
 Set-Location -LiteralPath $ProjectRoot
 
-$openssl = Get-Command openssl -ErrorAction SilentlyContinue
+$openssl = Get-Command openssl -ErrorAction SilentlyContinue | Select-Object -First 1
 
 if (-not $IpAddress) {
-  $ipconfig = ipconfig | Select-String -Pattern "IPv4" | Select-Object -First 1
-  if ($ipconfig) {
-    $IpAddress = (($ipconfig.ToString() -split ":")[-1]).Trim()
+  $candidate = Get-NetIPConfiguration |
+    Where-Object { $_.IPv4DefaultGateway -and $_.IPv4Address } |
+    ForEach-Object { $_.IPv4Address.IPAddress } |
+    Where-Object { $_ -notlike "127.*" -and $_ -notlike "169.254.*" } |
+    Select-Object -First 1
+
+  if (-not $candidate) {
+    $candidate = Get-NetIPAddress -AddressFamily IPv4 |
+      Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" -and $_.InterfaceAlias -notlike "vEthernet*" } |
+      Select-Object -First 1 -ExpandProperty IPAddress
   }
+
+  $IpAddress = $candidate
 }
 
 if (-not $IpAddress) {

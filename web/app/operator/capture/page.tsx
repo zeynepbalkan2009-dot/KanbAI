@@ -73,7 +73,7 @@ function makePhoneUuid() {
 }
 
 export default function OperatorCapturePage() {
-  const { user, isAuthenticated, login, fetchMe } = useAuthStore();
+  const { user, isAuthenticated, login, logout, fetchMe } = useAuthStore();
   const [email, setEmail] = useState(DEFAULT_EMAIL);
   const [password, setPassword] = useState(DEFAULT_PASSWORD);
   const [loadingLogin, setLoadingLogin] = useState(false);
@@ -94,6 +94,16 @@ export default function OperatorCapturePage() {
       fetchMe().catch(() => undefined);
     }
   }, [fetchMe, isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated && user?.email?.toLowerCase() !== DEFAULT_EMAIL) {
+      logout().catch(() => undefined);
+      setDevice(null);
+      setStation(null);
+      setProduct(null);
+      toast("Operator ekrani GERMAKSAN pilot oturumu bekliyor", { duration: 5000 });
+    }
+  }, [isAuthenticated, logout, user?.email]);
 
   const previewName = useMemo(() => file?.name.replace(/\.[^.]+$/, "") || "Yeni parca fotografi", [file]);
 

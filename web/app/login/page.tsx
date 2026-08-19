@@ -10,8 +10,8 @@ export default function LoginPage() {
   const login = useAuthStore((s) => s.login);
   const isLoading = useAuthStore((s) => s.isLoading);
 
-  const [email, setEmail] = useState("admin@demo.com");
-  const [password, setPassword] = useState("Admin123!");
+  const [email, setEmail] = useState("pilot@germaksan.com.tr");
+  const [password, setPassword] = useState("GermaksanPilot2026!");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -41,6 +41,29 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit}
           className="bg-gray-900 border border-gray-800 rounded-2xl p-8 space-y-5 shadow-xl">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("pilot@germaksan.com.tr");
+                setPassword("GermaksanPilot2026!");
+              }}
+              className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-200"
+            >
+              GERMAKSAN Pilot
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("admin@demo.com");
+                setPassword("Admin123!");
+              }}
+              className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold text-gray-300"
+            >
+              Demo Admin
+            </button>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">
               Email
@@ -95,7 +118,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-gray-600 mt-6">
-          Demo: admin@demo.com / Admin123!
+          Pilot: pilot@germaksan.com.tr / GermaksanPilot2026!
         </p>
       </div>
     </div>

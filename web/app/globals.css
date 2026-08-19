@@ -16,6 +16,40 @@
   .decision-error   { @apply bg-red-950/60 text-red-500 border border-red-800/50; }
 }
 
+.dashboard-light [class*="bg-[#090B10]"] {
+  background: #f5f7fb !important;
+  color: #0b1020 !important;
+}
+
+.dashboard-light [class*="bg-[#111722]"],
+.dashboard-light [class*="bg-[#0f131c]"],
+.dashboard-light [class*="bg-[#0D121B]"] {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+  color: #0b1020 !important;
+}
+
+.dashboard-light [class*="bg-black/"] {
+  background: #f8fafc !important;
+}
+
+.dashboard-light [class*="border-white/"] {
+  border-color: #e2e8f0 !important;
+}
+
+.dashboard-light [class*="text-white/"],
+.dashboard-light [class*="text-slate-200"],
+.dashboard-light [class*="text-slate-300"],
+.dashboard-light [class*="text-slate-400"],
+.dashboard-light [class*="text-slate-500"] {
+  color: #64748b !important;
+}
+
+.dashboard-light :where([class~="text-white"]):not([class*="bg-emerald"]):not([class*="bg-red"]):not([class*="bg-[#FF7A00]"]):not([class*="bg-[#063f63]"]) {
+  color: #0b1020 !important;
+}
+
 /* Investor landing page. Namespaced so the authenticated product UI remains unchanged. */
 .marketing { --m-ink:#0a1018; --m-muted:#5f6b78; --m-cyan:#08bde8; --m-cyan-soft:#e9fbff; --m-line:#e6edf2; --m-soft:#f7f9fb; --m-radius:18px; --m-shadow:0 24px 70px rgba(20,39,60,.11); background:#fff; color:var(--m-ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
 .marketing * { box-sizing:border-box; }

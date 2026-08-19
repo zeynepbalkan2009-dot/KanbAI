@@ -1,97 +1,60 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
-import { useInspectionStore } from "@/lib/store/inspections";
-import {
-  Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from "recharts";
-import {
-  AlertTriangle, ArrowRight, Building2, Camera, CheckCircle2, ClipboardCheck,
-  Clock3, Factory, Gauge, Search, ShieldAlert, Sparkles, Zap,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
+import {
+  CheckCircle2,
+  ClipboardCheck,
+  ExternalLink,
+  MonitorCheck,
+  RefreshCw,
+  Search,
+  Smartphone,
+  XCircle,
+} from "lucide-react";
+import { inspectionsApi } from "@/lib/api";
+import { useInspectionStore } from "@/lib/store/inspections";
 
-const toneByDecision: Record<string, string> = {
-  pass: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-  fail: "border-red-500/25 bg-red-500/10 text-red-300",
-  review: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-  pending: "border-white/10 bg-white/5 text-white/45",
-  error: "border-red-500/25 bg-red-500/10 text-red-300",
-};
+const lines = [
+  "Production Line 1A",
+  "Production Line 1B",
+  "Production Line 2A",
+  "Production Line 2B",
+  "GERMAKSAN Pilot Line",
+  "Production Line 3B",
+  "Production Line 4A",
+  "Production Line 4B",
+  "Waste",
+];
 
-const labelByDecision: Record<string, string> = {
-  pass: "PASS",
-  fail: "FAIL",
-  review: "REVIEW",
-  pending: "PENDING",
-  error: "ERROR",
-};
-
-function MetricCard({
-  label,
-  value,
-  helper,
-  icon: Icon,
-  tone,
-}: {
-  label: string;
-  value: string | number;
-  helper: string;
-  icon: React.ElementType;
-  tone: string;
-}) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-[#0f131c] p-4 shadow-lg shadow-black/15">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-medium text-white/45">{label}</p>
-          <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-          <p className="mt-1 text-xs text-white/40">{helper}</p>
-        </div>
-        <div className={`rounded-lg p-2 ${tone}`}>
-          <Icon size={17} />
-        </div>
-      </div>
-    </div>
-  );
+function decisionLabel(decision?: string) {
+  if (decision === "pass") return "OK";
+  if (decision === "fail") return "NOK";
+  if (decision === "review") return "REVIEW";
+  if (decision === "pending") return "WAIT";
+  return "--";
 }
 
-function DecisionBadge({ decision }: { decision: string }) {
-  return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${toneByDecision[decision] ?? toneByDecision.pending}`}>
-      {labelByDecision[decision] ?? decision.toUpperCase()}
-    </span>
-  );
+function decisionClasses(decision?: string) {
+  if (decision === "pass") return "border-emerald-500 text-emerald-300";
+  if (decision === "fail") return "border-red-500 text-red-300";
+  if (decision === "review") return "border-[#FF7A00] text-orange-300";
+  return "border-white/25 text-white/55";
 }
 
-function ActionLink({
-  href,
-  label,
-  detail,
-  icon: Icon,
-}: {
-  href: string;
-  label: string;
-  detail: string;
-  icon: React.ElementType;
-}) {
-  return (
-    <Link href={href} className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-[#00C2FF]/40 hover:bg-[#00C2FF]/10">
-      <div className="rounded-lg bg-white/5 p-2 text-[#00C2FF]">
-        <Icon size={17} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-white">{label}</p>
-        <p className="truncate text-xs text-white/40">{detail}</p>
-      </div>
-      <ArrowRight size={15} className="text-white/25 transition group-hover:text-[#00C2FF]" />
-    </Link>
-  );
+function frameClasses(decision?: string) {
+  if (decision === "pass") return "border-emerald-500 text-emerald-500";
+  if (decision === "fail") return "border-red-500 text-red-500";
+  if (decision === "review") return "border-[#FF7A00] text-[#FF7A00]";
+  return "border-white/30 text-white/50";
 }
 
 export default function DashboardPage() {
   const { inspections, stats, fetchInspections, fetchStats, isLoading } = useInspectionStore();
+  const [activeLine, setActiveLine] = useState("GERMAKSAN Pilot Line");
+  const [query, setQuery] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInspections();
@@ -99,197 +62,188 @@ export default function DashboardPage() {
     const interval = setInterval(() => {
       fetchInspections();
       fetchStats();
-    }, 30_000);
+    }, 8_000);
     return () => clearInterval(interval);
   }, [fetchInspections, fetchStats]);
 
-  const latest = inspections.slice(0, 8);
-  const openReviewCount = stats?.review_count ?? 0;
-  const failCount = stats?.fail_count ?? 0;
+  const latest = inspections[0];
+  const recent = inspections.slice(0, 7);
   const passRate = stats ? Math.round(stats.pass_rate * 100) : 0;
-  const avgConfidence = stats?.avg_confidence ? Math.round(stats.avg_confidence * 100) : 0;
-
-  const chartData = useMemo(
-    () => [...inspections]
-      .reverse()
-      .slice(-20)
-      .map((item) => ({
-        time: format(new Date(item.created_at), "HH:mm"),
-        confidence: item.confidence ? Math.round(item.confidence * 100) : null,
-      })),
-    [inspections],
+  const filteredLines = useMemo(
+    () => lines.filter((line) => line.toLowerCase().includes(query.toLowerCase())),
+    [query],
   );
 
-  const pipeline = [
-    { label: "Captured", value: stats?.total ?? 0, icon: Camera, tone: "text-[#00C2FF]" },
-    { label: "AI processed", value: (stats?.pass_count ?? 0) + failCount + openReviewCount, icon: Sparkles, tone: "text-blue-300" },
-    { label: "Needs HITL", value: failCount + openReviewCount, icon: ClipboardCheck, tone: "text-amber-300" },
-    { label: "Closed pass", value: stats?.pass_count ?? 0, icon: CheckCircle2, tone: "text-emerald-300" },
-  ];
+  useEffect(() => {
+    let active = true;
+    let nextUrl: string | null = null;
+
+    if (!latest?.id) {
+      setImageUrl(null);
+      return () => undefined;
+    }
+
+    inspectionsApi.image(latest.id).then(({ data }) => {
+      if (!active) return;
+      nextUrl = URL.createObjectURL(data);
+      setImageUrl(nextUrl);
+    }).catch(() => {
+      if (active) setImageUrl(null);
+    });
+
+    return () => {
+      active = false;
+      if (nextUrl) URL.revokeObjectURL(nextUrl);
+    };
+  }, [latest?.id]);
 
   return (
-    <div className="min-h-full bg-[#090B10] p-4 md:p-6">
-      <div className="mx-auto max-w-7xl space-y-5">
-        <header className="rounded-2xl border border-white/10 bg-[#0f131c] p-5 shadow-xl shadow-black/20">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <div className="rounded-xl border border-[#00C2FF]/25 bg-[#00C2FF]/10 p-3 text-[#00C2FF]">
-                <Factory size={24} />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-semibold text-white">Demo Fabrika A</h1>
-                  <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
-                    Production demo
-                  </span>
-                </div>
-                <p className="mt-1 text-sm text-white/50">
-                  Industrial AI quality account workspace - inspections, HITL, dataset and model operations.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <div className="flex min-w-[220px] items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/45">
-                <Search size={15} />
-                Search inspections, devices...
-              </div>
-              <Link href="/dashboard/capture" className="inline-flex items-center gap-2 rounded-lg bg-[#FF7A00] px-4 py-2 text-sm font-semibold text-black hover:bg-[#ff8c22]">
-                <Camera size={16} />
-                New inspection
-              </Link>
+    <div className="min-h-full bg-[#090B10] p-4 text-white md:p-6">
+      <div className="mx-auto grid max-w-7xl gap-5 xl:grid-cols-[330px_minmax(0,1fr)_300px]">
+        <aside className="overflow-hidden rounded-2xl border border-white/10 bg-[#0f131c]">
+          <div className="border-b border-white/10 p-4">
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+              <Search size={16} className="text-white/35" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search line"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-white/30"
+              />
             </div>
           </div>
-        </header>
+          <div className="divide-y divide-white/5">
+            {filteredLines.map((line) => (
+              <button
+                key={line}
+                onClick={() => setActiveLine(line)}
+                className={`flex w-full items-center justify-between px-5 py-4 text-left text-sm transition ${
+                  activeLine === line ? "bg-[#00C2FF]/12 text-[#8de9ff]" : "text-white/65 hover:bg-white/[0.04] hover:text-white"
+                }`}
+              >
+                <span>{line}</span>
+                {line === "GERMAKSAN Pilot Line" && (
+                  <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[11px] font-semibold text-emerald-300">
+                    live
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </aside>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Inspections" value={stats?.total ?? 0} helper="All time production checks" icon={Zap} tone="bg-blue-500/10 text-blue-300" />
-          <MetricCard label="Pass rate" value={`${passRate}%`} helper={`${stats?.pass_count ?? 0} accepted parts`} icon={Gauge} tone="bg-emerald-500/10 text-emerald-300" />
-          <MetricCard label="Detected defects" value={failCount} helper="Requires traceability" icon={ShieldAlert} tone="bg-red-500/10 text-red-300" />
-          <MetricCard label="Open reviews" value={openReviewCount} helper="Quality team action needed" icon={AlertTriangle} tone="bg-amber-500/10 text-amber-300" />
-        </div>
-
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-white">Factory quality trend</h2>
-                <p className="mt-1 text-xs text-white/40">Last 20 inspection confidence scores</p>
-              </div>
-              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/45">
-                Avg {avgConfidence || "--"}%
-              </span>
+        <main className="overflow-hidden rounded-2xl border border-white/10 bg-[#0f131c]">
+          <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#00C2FF]">Quality view</p>
+              <h1 className="mt-1 text-2xl font-semibold">{activeLine}</h1>
             </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="confidenceGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00C2FF" stopOpacity={0.28} />
-                    <stop offset="95%" stopColor="#00C2FF" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1c2430" />
-                <XAxis dataKey="time" tick={{ fill: "#667085", fontSize: 11 }} />
-                <YAxis domain={[0, 100]} tick={{ fill: "#667085", fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
-                <Tooltip
-                  contentStyle={{ background: "#111827", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10 }}
-                  labelStyle={{ color: "#cbd5e1" }}
-                  formatter={(value: number) => [`${value}%`, "Confidence"]}
-                />
-                <Area type="monotone" dataKey="confidence" stroke="#00C2FF" strokeWidth={2} fill="url(#confidenceGradient)" connectNulls />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  fetchInspections();
+                  fetchStats();
+                }}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10"
+              >
+                <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+                Refresh
+              </button>
+              <Link
+                href="/dashboard/hitl"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#00C2FF] px-4 py-2 text-sm font-bold text-black"
+              >
+                <ClipboardCheck size={16} />
+                Review
+              </Link>
+            </div>
+          </header>
+
+          <section className="p-5">
+            <div className="relative min-h-[520px] overflow-hidden rounded-2xl border border-white/10 bg-black">
+              {imageUrl ? (
+                <img src={imageUrl} alt="Latest inspection" className="h-full min-h-[520px] w-full object-contain" />
+              ) : (
+                <div className="flex min-h-[520px] flex-col items-center justify-center gap-3 text-white/40">
+                  <MonitorCheck size={38} />
+                  <p className="text-sm">Telefon fotografi bekleniyor</p>
+                </div>
+              )}
+
+              {latest && imageUrl && (
+                <div className={`absolute inset-8 rounded-2xl border-[6px] shadow-[0_0_40px_rgba(0,0,0,.45)] backdrop-blur-[1px] ${frameClasses(latest.decision)}`}>
+                  <div className={`absolute -bottom-1 left-0 rounded-tr-xl px-4 py-2 text-2xl font-black ${latest.decision === "fail" ? "bg-red-600 text-white" : latest.decision === "review" ? "bg-[#FF7A00] text-black" : "bg-emerald-600 text-white"}`}>
+                    {decisionLabel(latest.decision)}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        </main>
+
+        <aside className="space-y-4">
+          <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/35">Current inspection</p>
+            <div className={`mt-4 rounded-2xl border p-4 ${decisionClasses(latest?.decision)}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-4xl font-black">{decisionLabel(latest?.decision)}</p>
+                  <p className="mt-2 font-mono text-xs text-white/45">{latest?.id?.slice(0, 8) ?? "no record"}</p>
+                </div>
+                {latest?.decision === "pass" ? <CheckCircle2 size={30} /> : <XCircle size={30} />}
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-xl bg-black/25 p-3">
+                  <p className="text-white/40">Guven</p>
+                  <p className="mt-1 text-xl font-semibold text-white">
+                    {latest?.confidence ? `${Math.round(latest.confidence * 100)}%` : "--"}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-black/25 p-3">
+                  <p className="text-white/40">Pass rate</p>
+                  <p className="mt-1 text-xl font-semibold text-white">{passRate}%</p>
+                </div>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-white/55">
+                {latest?.defects?.map((defect) => defect.class_name).join(", ") || "Henuz hata etiketi yok"}
+              </p>
+            </div>
           </section>
 
-          <aside className="space-y-4">
-            <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-4">
-              <h2 className="mb-3 text-sm font-semibold text-white">Quick actions</h2>
-              <div className="space-y-2">
-                <ActionLink href="/dashboard/capture" label="Operator capture" detail="Tablet camera / demo camera" icon={Camera} />
-                <ActionLink href="/dashboard/hitl" label="Review queue" detail={`${failCount + openReviewCount} items need attention`} icon={ClipboardCheck} />
-                <ActionLink href="/dashboard/mlops" label="Learning cycle" detail="Dataset, retrain, model registry" icon={Sparkles} />
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-4">
-              <h2 className="mb-3 text-sm font-semibold text-white">Account status</h2>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between text-white/60">
-                  <span className="inline-flex items-center gap-2"><Building2 size={15} /> Factory</span>
-                  <span className="font-medium text-white">Demo Fabrika A</span>
-                </div>
-                <div className="flex items-center justify-between text-white/60">
-                  <span className="inline-flex items-center gap-2"><Clock3 size={15} /> Shift</span>
-                  <span className="font-medium text-white">Gunduz</span>
-                </div>
-                <div className="flex items-center justify-between text-white/60">
-                  <span className="inline-flex items-center gap-2"><Sparkles size={15} /> Model</span>
-                  <span className="font-medium text-white">mock-v1.0-demo</span>
-                </div>
-              </div>
-            </section>
-          </aside>
-        </div>
-
-        <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-white">Inspection pipeline</h2>
-              <span className="text-xs text-white/35">Today</span>
-            </div>
-            <div className="space-y-3">
-              {pipeline.map(({ label, value, icon: Icon, tone }, index) => (
-                <div key={label} className="flex items-center gap-3">
-                  <div className={`rounded-lg bg-white/5 p-2 ${tone}`}>
-                    <Icon size={16} />
+          <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-5">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-white/35">Activity</p>
+            <div className="space-y-2">
+              {recent.length === 0 ? (
+                <p className="text-sm text-white/40">Kayit bekleniyor.</p>
+              ) : recent.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-mono text-xs text-white/70">{item.id.slice(0, 8)}</p>
+                    <p className="mt-0.5 text-[11px] text-white/35">{format(new Date(item.created_at), "HH:mm:ss")}</p>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-white">{label}</p>
-                      <p className="text-sm font-semibold text-white">{value}</p>
-                    </div>
-                    <div className="mt-2 h-1.5 rounded-full bg-white/5">
-                      <div className="h-1.5 rounded-full bg-[#00C2FF]" style={{ width: `${Math.max(8, 100 - index * 18)}%` }} />
-                    </div>
-                  </div>
+                  <span className={`rounded-md border px-2 py-1 text-xs font-black ${decisionClasses(item.decision)}`}>
+                    {decisionLabel(item.decision)}
+                  </span>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0f131c]">
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-              <div>
-                <h2 className="text-sm font-semibold text-white">Recent activity</h2>
-                <p className="mt-1 text-xs text-white/40">Latest inspections and AI decisions</p>
-              </div>
-              <Link href="/dashboard/inspections" className="text-xs font-medium text-[#00C2FF] hover:text-white">
-                View all
-              </Link>
-            </div>
-
-            {isLoading && latest.length === 0 ? (
-              <div className="p-8 text-center text-sm text-white/40">Loading activity...</div>
-            ) : latest.length === 0 ? (
-              <div className="p-8 text-center text-sm text-white/40">No inspections yet.</div>
-            ) : (
-              <div className="divide-y divide-white/10">
-                {latest.map((item) => (
-                  <div key={item.id} className="grid grid-cols-[130px_minmax(0,1fr)_90px_90px_72px] items-center gap-3 px-5 py-3 text-sm hover:bg-white/[0.03]">
-                    <DecisionBadge decision={item.decision} />
-                    <div className="min-w-0">
-                      <p className="truncate font-mono text-xs text-white/70">{item.id}</p>
-                      <p className="mt-1 truncate text-xs text-white/35">{item.defects?.[0]?.class_name ?? "no defect label"}</p>
-                    </div>
-                    <p className="text-xs text-white/55">{item.confidence ? `${Math.round(item.confidence * 100)}%` : "--"}</p>
-                    <p className="text-xs text-white/35">{item.inference_latency_ms ? `${item.inference_latency_ms}ms` : "--"}</p>
-                    <p className="text-right text-xs text-white/35">{format(new Date(item.created_at), "HH:mm")}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+          <section className="rounded-2xl border border-white/10 bg-[#0f131c] p-5">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-white/35">Phone input</p>
+            <p className="text-sm leading-6 text-white/55">
+              Fotograf sadece telefondaki operator ekranindan gelir.
+            </p>
+            <Link
+              href="/dashboard/capture"
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold hover:bg-white/10"
+            >
+              <Smartphone size={16} />
+              Telefon linki
+              <ExternalLink size={14} />
+            </Link>
           </section>
-        </div>
+        </aside>
       </div>
     </div>
   );

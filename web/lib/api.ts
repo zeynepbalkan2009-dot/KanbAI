@@ -132,6 +132,7 @@ export const inspectionsApi = {
     offset?: number;
   }) => api.get("/inspections", { params }),
   get: (id: string) => api.get(`/inspections/${id}`),
+  image: (id: string) => api.get(`/inspections/${id}/image`, { responseType: "blob" }),
   stats: () => api.get("/inspections/stats"),
   upload: (deviceId: string, file: File, metadata?: {
     serial_number?: string;

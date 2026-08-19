@@ -2,19 +2,22 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, Header, Query, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 import csv
 import io
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.domains.auth.service import get_current_user, CurrentUser
 from app.domains.inspection.service import (
     InspectionService, InspectionOut, InspectionStats, ReviewRequest,
 )
 from app.infrastructure.database.session import get_db
+from app.infrastructure.storage.minio_client import get_minio_client
 
 router = APIRouter(prefix="/inspections", tags=["inspections"])
+settings = get_settings()
 
 
 def _svc(
@@ -106,6 +109,31 @@ async def get_inspection(
 ):
     inspection = await svc.get_inspection(inspection_id)
     return svc.add_presigned_url(inspection)
+
+
+@router.get("/{inspection_id}/image")
+async def get_inspection_image(
+    inspection_id: str,
+    svc: InspectionService = Depends(_svc),
+):
+    """Stream an authenticated inspection image through the API gateway."""
+    inspection = await svc.get_inspection(inspection_id)
+    client = get_minio_client()
+    response = client.get_object(settings.minio_bucket_inspections, inspection.image_key)
+    try:
+        data = response.read()
+    finally:
+        response.close()
+        response.release_conn()
+
+    ext = inspection.image_key.rsplit(".", 1)[-1].lower()
+    media_type = {
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "webp": "image/webp",
+    }.get(ext, "application/octet-stream")
+    return Response(content=data, media_type=media_type)
 
 
 @router.patch("/{inspection_id}/review", response_model=InspectionOut)

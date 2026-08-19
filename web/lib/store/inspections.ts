@@ -64,7 +64,9 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
     if (!event.inspection_id) return;
 
     if (event.type === "inspection.processing") {
-      // Mark as processing in list
+      const exists = get().inspections.some((i) => i.id === event.inspection_id);
+      if (!exists) void get().fetchInspections();
+
       set((s) => ({
         inspections: s.inspections.map((i) =>
           i.id === event.inspection_id
@@ -76,7 +78,6 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
 
     if (event.type === "inspection.completed") {
       set((s) => {
-        const exists = s.inspections.some((i) => i.id === event.inspection_id);
         const updated = s.inspections.map((i) =>
           i.id === event.inspection_id
             ? {
@@ -90,6 +91,8 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
         );
         return { inspections: updated };
       });
+      const exists = get().inspections.some((i) => i.id === event.inspection_id);
+      if (!exists) void get().fetchInspections();
       // Refresh stats after completed
       get().fetchStats();
     }

@@ -8,7 +8,7 @@ import {
   TimerReset, UserRoundCheck, XCircle,
 } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
-import { hitlApi } from "@/lib/api";
+import { hitlApi, inspectionsApi } from "@/lib/api";
 
 type QueueItem = {
   id: string;
@@ -88,6 +88,7 @@ export default function HitlPage() {
   const [submitting, setSubmitting] = useState(false);
   const [filter, setFilter] = useState<InboxFilter>("all");
   const [query, setQuery] = useState("");
+  const [evidenceUrl, setEvidenceUrl] = useState<string | null>(null);
 
   const filteredQueue = useMemo(() => {
     return queue.filter((item) => {
@@ -124,6 +125,29 @@ export default function HitlPage() {
     if (selected?.defects?.[0]?.class_name) {
       setCorrectedLabel(selected.defects[0].class_name);
     }
+  }, [selected?.id]);
+
+  useEffect(() => {
+    let active = true;
+    let nextUrl: string | null = null;
+
+    if (!selected?.id) {
+      setEvidenceUrl(null);
+      return () => undefined;
+    }
+
+    inspectionsApi.image(selected.id).then(({ data }) => {
+      if (!active) return;
+      nextUrl = URL.createObjectURL(data);
+      setEvidenceUrl(nextUrl);
+    }).catch(() => {
+      if (active) setEvidenceUrl(null);
+    });
+
+    return () => {
+      active = false;
+      if (nextUrl) URL.revokeObjectURL(nextUrl);
+    };
   }, [selected?.id]);
 
   const submit = async (decision: "pass" | "fail" | "wrong_prediction" | "needs_retrain") => {
@@ -252,8 +276,12 @@ export default function HitlPage() {
               {selected && <DecisionBadge decision={selected.decision} />}
             </div>
 
-            <div className="relative aspect-[16/10] bg-[radial-gradient(circle_at_40%_35%,#202633,#07080c_70%)]">
-              <div className="absolute inset-8 rounded-[28px] border border-white/10 bg-black/20 shadow-inner" />
+            <div className="relative aspect-[16/10] bg-black">
+              {evidenceUrl ? (
+                <img src={evidenceUrl} alt="Inspection evidence" className="h-full w-full object-contain" />
+              ) : (
+                <div className="absolute inset-8 rounded-[28px] border border-white/10 bg-black/20 shadow-inner" />
+              )}
               <div className="absolute left-[19%] top-[31%] h-[29%] w-[38%] rounded-lg border-2 border-[#FF7A00] bg-[#FF7A00]/10 shadow-[0_0_35px_rgba(255,122,0,.25)]">
                 <span className="-mt-8 inline-flex rounded-md bg-[#FF7A00] px-2 py-1 text-xs font-semibold text-black">
                   {selected?.defects?.[0]?.class_name ?? "crack"} {selected?.confidence ? Math.round(selected.confidence * 100) : 91}%

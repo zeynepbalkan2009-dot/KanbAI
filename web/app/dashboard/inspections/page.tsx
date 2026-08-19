@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { useEffect, useMemo, useState } from "react";
 import { useInspectionStore } from "@/lib/store/inspections";
-import { devicesApi, inspectionsApi } from "@/lib/api";
+import { devicesApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import {
-  AlertTriangle, Camera, CheckCircle2, FileImage, Filter, RefreshCw,
-  Search, Upload, XCircle,
+  AlertTriangle, CheckCircle2, FileImage, Filter, RefreshCw,
+  Search, Smartphone, XCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -52,7 +51,6 @@ export default function InspectionsPage() {
   const { inspections, fetchInspections, reviewInspection, isLoading } = useInspectionStore();
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevice, setSelectedDevice] = useState("");
-  const [uploading, setUploading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
 
@@ -63,37 +61,6 @@ export default function InspectionsPage() {
       if (data.length > 0) setSelectedDevice(data[0].id);
     });
   }, [fetchInspections]);
-
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    if (!selectedDevice) {
-      toast.error("Once cihaz secin");
-      return;
-    }
-
-    for (const file of acceptedFiles) {
-      setUploading(true);
-      try {
-        const { data } = await inspectionsApi.upload(selectedDevice, file, {
-          serial_number: "KANBAI-DEMO-UPLOAD",
-          lot_number: "FACTORY-PILOT-A",
-          captured_at: new Date().toISOString(),
-        });
-        toast.success(`Inspection queued: ${data.inspection_id.split("-")[0]}`);
-        fetchInspections();
-      } catch (error: any) {
-        toast.error(error?.response?.data?.detail ?? "Upload failed");
-      } finally {
-        setUploading(false);
-      }
-    }
-  }, [selectedDevice, fetchInspections]);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { "image/*": [".jpg", ".jpeg", ".png", ".webp"] },
-    multiple: true,
-    maxSize: 20 * 1024 * 1024,
-  });
 
   const filtered = useMemo(() => {
     return inspections.filter((item) => {
@@ -121,8 +88,8 @@ export default function InspectionsPage() {
           </div>
           <div className="flex gap-2">
             <Link href="/dashboard/capture" className="inline-flex items-center gap-2 rounded-lg bg-[#FF7A00] px-4 py-2 text-sm font-semibold text-black hover:bg-[#ff8c22]">
-              <Camera size={16} />
-              Capture
+              <Smartphone size={16} />
+              Telefon linki
             </Link>
             <button onClick={() => fetchInspections()} className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10">
               <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
@@ -132,7 +99,7 @@ export default function InspectionsPage() {
         </header>
 
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="rounded-2xl border border-white/10 bg-[#0f131c] p-4">
+          <div className="rounded-2xl border border-white/10 bg-[#0f131c] p-4 xl:col-span-2">
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white">
                 <Search size={15} className="text-white/35" />
@@ -155,21 +122,6 @@ export default function InspectionsPage() {
                     {filter.label}
                   </button>
                 ))}
-              </div>
-            </div>
-          </div>
-
-          <div {...getRootProps()} className={`rounded-2xl border border-dashed p-4 transition ${
-            isDragActive ? "border-[#00C2FF] bg-[#00C2FF]/10" : "border-white/10 bg-[#0f131c] hover:border-white/20"
-          }`}>
-            <input {...getInputProps()} />
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-white/5 p-2 text-[#00C2FF]">
-                {uploading ? <RefreshCw className="animate-spin" size={18} /> : <Upload size={18} />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-white">{uploading ? "Uploading..." : "Drop images"}</p>
-                <p className="truncate text-xs text-white/40">JPG, PNG, WEBP - demo metadata included</p>
               </div>
             </div>
           </div>

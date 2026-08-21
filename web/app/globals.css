@@ -46,7 +46,7 @@
   color: #64748b !important;
 }
 
-.dashboard-light :where([class~="text-white"]):not([class*="bg-emerald"]):not([class*="bg-red"]):not([class*="bg-[#FF7A00]"]):not([class*="bg-[#063f63"]) {
+.dashboard-light :where([class~="text-white"]):not([class*="bg-emerald"]):not([class*="bg-red"]):not([class*="bg-[#FF7A00]"]):not([class*="bg-[#063f63]"]) {
   color: #0b1020 !important;
 }
 

@@ -135,6 +135,20 @@ export default function HomePage() {
         <div className="marketing-container marketing-investor-cta"><p>Want to inspect the product workflow?</p><Link className="marketing-btn marketing-btn-outline" href="/login">Open the demo →</Link></div>
       </section>
 
+      <section className="marketing-section marketing-founder">
+        <div className="marketing-container marketing-founder-card">
+          <div>
+            <p className="marketing-eyebrow">FOUNDER</p>
+            <h2>Built from an engineering and startup perspective.</h2>
+          </div>
+          <div>
+            <p className="marketing-founder-name">Zeynep Balkan</p>
+            <p className="marketing-large">Founder & CEO. Building KanbAI around a practical goal: make visual quality inspection measurable, deployable and scalable for real factories.</p>
+            <a className="marketing-btn marketing-btn-outline" href="https://www.linkedin.com/in/zeynep-balkan-3709a8193/" target="_blank" rel="noreferrer">Founder LinkedIn →</a>
+          </div>
+        </div>
+      </section>
+
       <section className="marketing-final-cta">
         <div className="marketing-container marketing-final-grid"><div><p className="marketing-eyebrow">KANBAI</p><h2>Let&apos;s make manufacturing quality measurable.</h2></div><div className="marketing-actions"><a className="marketing-btn marketing-btn-primary marketing-btn-large" href={pilotMailto}>Request a pilot</a><a className="marketing-btn marketing-btn-outline marketing-btn-large" href={investorMailto}>Investor contact</a></div></div>
       </section>

@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$ProjectRoot = "D:\kanba-qc-platform\qc-platform",
   [string]$IpAddress = "",
   [switch]$Build,
@@ -38,10 +38,10 @@ foreach ($line in Get-Content -LiteralPath ".env") {
   }
 }
 
-if ($envValues["PILOT_MODE"] -ne "true") { throw "Set PILOT_MODE=true before starting GERMAKSAN pilot." }
-if ($envValues["DEMO_MODE"] -eq "true") { throw "Set DEMO_MODE=false before starting GERMAKSAN pilot." }
-if ($envValues["APP_ENV"] -ne "production") { throw "Set APP_ENV=production before starting GERMAKSAN pilot." }
-if ($envValues["DEBUG"] -eq "true") { throw "Set DEBUG=false before starting GERMAKSAN pilot." }
+if ($envValues["PILOT_MODE"] -ne "true") { throw "Set PILOT_MODE=true before starting factory pilot." }
+if ($envValues["DEMO_MODE"] -eq "true") { throw "Set DEMO_MODE=false before starting factory pilot." }
+if ($envValues["APP_ENV"] -ne "production") { throw "Set APP_ENV=production before starting factory pilot." }
+if ($envValues["DEBUG"] -eq "true") { throw "Set DEBUG=false before starting factory pilot." }
 
 $composeFiles = @("docker-compose.yml", "docker-compose.https.yml", "docker-compose.pilot.yml")
 
@@ -72,9 +72,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ""
-Write-Host "GERMAKSAN laptop pilot is starting." -ForegroundColor Green
+Write-Host "Factory laptop pilot is starting." -ForegroundColor Green
 Write-Host "Laptop dashboard: https://localhost/dashboard/executive" -ForegroundColor White
 Write-Host "Phone capture:     http://$IpAddress/operator/capture" -ForegroundColor White
 Write-Host "Device activation: http://$IpAddress/activate-device?token=<activation-token>" -ForegroundColor White
 Write-Host ""
 Write-Host "Keep the laptop and phone on the same Wi-Fi. The phone capture route uses local HTTP to avoid Android self-signed certificate blocking." -ForegroundColor Yellow
+

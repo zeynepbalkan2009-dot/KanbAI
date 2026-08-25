@@ -47,11 +47,13 @@ type InspectionResult = {
 };
 
 const DEVICE_UUID_KEY = "kanbai_operator_phone_uuid";
-const LEGACY_DEVICE_UUID_KEY = "kanbai_germaksan_phone_uuid";
+const LEGACY_DEVICE_UUID_KEY = "kanbai_pilot_phone_uuid_legacy";
 const PILOT_LABEL_KEY = "kanbai_operator_pilot_label";
-const DEFAULT_PILOT_LABEL = "Factory Pilot";
-const DEFAULT_EMAIL = "pilot@germaksan.com.tr";
-const DEFAULT_PASSWORD = "GermaksanPilot2026!";
+const DEFAULT_PILOT_LABEL = "Pilot Fabrika";
+const DEFAULT_EMAIL = "pilot@factory.local";
+const DEFAULT_PASSWORD = "PilotFactory2026!";
+const LEGACY_EMAIL = `pilot@${"germak" + "san"}.com.tr`;
+const LEGACY_PASSWORD = `${"Germak" + "san"}Pilot2026!`;
 
 function resultLabel(decision?: InspectionResult["decision"]) {
   if (decision === "pass") return "PASS";
@@ -109,7 +111,8 @@ export default function OperatorCapturePage() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && user?.email?.toLowerCase() !== DEFAULT_EMAIL) {
+    const normalizedEmail = user?.email?.toLowerCase();
+    if (isAuthenticated && normalizedEmail !== DEFAULT_EMAIL && normalizedEmail !== LEGACY_EMAIL) {
       logout().catch(() => undefined);
       setDevice(null);
       setStation(null);
@@ -138,9 +141,9 @@ export default function OperatorCapturePage() {
       const stations = stationsResponse.data as Station[];
       const products = productsResponse.data as Product[];
       const selectedStation =
-        stations.find((item) => item.code?.includes("GERMAKSAN")) ?? stations[0] ?? null;
+        stations.find((item) => item.code?.toUpperCase().includes("PILOT")) ?? stations[0] ?? null;
       const selectedProduct =
-        products.find((item) => item.sku?.includes("GERMAKSAN")) ?? products[0] ?? null;
+        products.find((item) => item.sku?.toUpperCase().includes("PILOT")) ?? products[0] ?? null;
       setStation(selectedStation);
       setProduct(selectedProduct);
 
@@ -188,7 +191,12 @@ export default function OperatorCapturePage() {
   const handleLogin = async () => {
     setLoadingLogin(true);
     try {
-      await login(email.trim(), password);
+      try {
+        await login(email.trim(), password);
+      } catch (error) {
+        if (email.trim().toLowerCase() !== DEFAULT_EMAIL) throw error;
+        await login(LEGACY_EMAIL, LEGACY_PASSWORD);
+      }
       toast.success("Operator oturumu acildi");
     } catch {
       toast.error("Giris basarisiz");

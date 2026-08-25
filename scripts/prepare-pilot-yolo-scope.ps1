@@ -64,4 +64,4 @@ Write-Host "Model copied to: $targetPath" -ForegroundColor White
 Write-Host "Inference mode: pilot_yolo_scope" -ForegroundColor White
 Write-Host ""
 Write-Host "Start with:" -ForegroundColor Cyan
-Write-Host ".\scripts\start-germaksan-pilot.ps1 -Build -Yolo" -ForegroundColor White
+Write-Host ".\scripts\start-factory-pilot.ps1 -Build -Yolo" -ForegroundColor White

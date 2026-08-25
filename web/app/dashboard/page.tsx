@@ -17,7 +17,7 @@ const lines = [
   "Production Line 1B",
   "Production Line 2A",
   "Production Line 2B",
-  "GERMAKSAN Pilot Line",
+  "Pilot Fabrika Hatti",
   "Production Line 3B",
   "Production Line 4A",
   "Production Line 4B",
@@ -59,7 +59,7 @@ function decisionText(decision?: string) {
 
 export default function DashboardPage() {
   const { inspections, stats, fetchInspections, fetchStats, isLoading } = useInspectionStore();
-  const [activeLine, setActiveLine] = useState("GERMAKSAN Pilot Line");
+  const [activeLine, setActiveLine] = useState("Pilot Fabrika Hatti");
   const [query, setQuery] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [pendingReviews, setPendingReviews] = useState(0);
@@ -134,7 +134,7 @@ export default function DashboardPage() {
                 }`}
               >
                 <span>{line}</span>
-                {line === "GERMAKSAN Pilot Line" && (
+                {line === "Pilot Fabrika Hatti" && (
                   <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
                     activeLine === line ? "bg-white/15 text-white" : "bg-emerald-50 text-emerald-700"
                   }`}>

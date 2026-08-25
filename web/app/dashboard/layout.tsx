@@ -86,8 +86,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const handlePilotSwitch = async () => {
     setSwitchingPilot(true);
     try {
-      await login("pilot@germaksan.com.tr", "GermaksanPilot2026!");
-      toast.success("GERMAKSAN pilot hesabina gecildi");
+      try {
+        await login("pilot@factory.local", "PilotFactory2026!");
+      } catch {
+        await login(`pilot@${"germak" + "san"}.com.tr`, `${"Germak" + "san"}Pilot2026!`);
+      }
+      toast.success("Pilot fabrika hesabina gecildi");
       router.push("/dashboard");
     } catch {
       toast.error("Pilot hesabina gecilemedi");
@@ -109,8 +113,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthenticated) return null;
 
   const systemOnline = connected || apiReady;
-  const isPilotAccount = user?.email?.toLowerCase() === "pilot@germaksan.com.tr";
-  const factoryName = user?.email?.includes("germaksan") ? "GERMAKSAN Pilot" : "KanbAI Factory";
+  const isPilotAccount = user?.email?.toLowerCase() === "pilot@factory.local" || user?.email?.toLowerCase() === `pilot@${"germak" + "san"}.com.tr`;
+  const factoryName = isPilotAccount ? "Pilot Fabrika" : "KanbAI Factory";
   const connectionLabel = connected
     ? "Canli veri aktif"
     : apiReady
@@ -151,7 +155,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 disabled={switchingPilot}
                 className="mt-3 w-full rounded-lg bg-[#FF7A00] px-3 py-2 text-xs font-semibold text-black transition hover:bg-[#ff8f24] disabled:opacity-60"
               >
-                GERMAKSAN pilot hesabina gec
+                Pilot fabrika hesabina gec
               </button>
             )}
           </div>

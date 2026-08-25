@@ -23,6 +23,7 @@ GitHub visitors.
 - [Factory pilot handoff](pilot/FACTORY_PILOT_HANDOFF.md)
 - [Pilot proposal one-pager](pilot/PILOT_PROPOSAL_ONE_PAGER.md)
 - [Factory data collection protocol](pilot/FACTORY_DATA_COLLECTION_PROTOCOL.md)
+- [Factory laptop + phone pilot](pilot/FACTORY_LAPTOP_PHONE_PILOT.md)
 - [Pilot installation guide](pilot/PILOT_INSTALLATION_GUIDE.md)
 - [Pilot acceptance criteria](pilot/PILOT_ACCEPTANCE_CRITERIA.md)
 - [Pilot test plan](pilot/PILOT_TEST_PLAN.md)

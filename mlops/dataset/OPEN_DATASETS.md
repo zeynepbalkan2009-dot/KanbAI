@@ -11,7 +11,7 @@ Use only sources with a clear license and keep raw data local:
 - Raw images go under `mlops/dataset/raw/open/`.
 - Raw images are git-ignored.
 - Attribution is required for `CC BY 4.0` datasets.
-- GERMAKSAN or other factory images must stay private and separate.
+- Private factory images must stay private and separate.
 
 ## First Batch
 
@@ -92,5 +92,5 @@ After the first download, use the data for:
 1. Scope-gate calibration: metal part vs out-of-scope images.
 2. YOLOv8 baseline training on sheet-metal or weld classes.
 3. Demo sample gallery with attribution.
-4. Comparison against GERMAKSAN private pilot images without mixing public and
+4. Comparison against private pilot factory images without mixing public and
    private sources.

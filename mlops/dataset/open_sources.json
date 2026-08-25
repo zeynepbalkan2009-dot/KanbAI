@@ -6,7 +6,7 @@
     "require_attribution": true,
     "notes": [
       "Only use sources with a clear open license for demo, research, and model prototyping.",
-      "Do not mix GERMAKSAN/private factory images with public open datasets.",
+      "Do not mix private factory images with public open datasets.",
       "Verify the source page again before investor demos, pilots, or commercial use."
     ]
   },

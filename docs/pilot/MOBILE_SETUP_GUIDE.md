@@ -4,10 +4,10 @@
 
 The laptop dashboard is for the quality owner. The phone/tablet screen is only for operator photo capture.
 
-Start the local GERMAKSAN pilot:
+Start the local factory pilot:
 
 ```powershell
-.\scripts\start-germaksan-pilot.ps1 -Build
+.\scripts\start-factory-pilot.ps1 -Build
 ```
 
 Then open this URL on the phone/tablet while it is on the same Wi-Fi:

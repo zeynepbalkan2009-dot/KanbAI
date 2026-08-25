@@ -46,7 +46,10 @@ type InspectionResult = {
   inference_latency_ms?: number;
 };
 
-const DEVICE_UUID_KEY = "kanbai_germaksan_phone_uuid";
+const DEVICE_UUID_KEY = "kanbai_operator_phone_uuid";
+const LEGACY_DEVICE_UUID_KEY = "kanbai_germaksan_phone_uuid";
+const PILOT_LABEL_KEY = "kanbai_operator_pilot_label";
+const DEFAULT_PILOT_LABEL = "Factory Pilot";
 const DEFAULT_EMAIL = "pilot@germaksan.com.tr";
 const DEFAULT_PASSWORD = "GermaksanPilot2026!";
 
@@ -69,15 +72,16 @@ function resultTone(decision?: InspectionResult["decision"]) {
 
 function makePhoneUuid() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `germaksan-phone-${crypto.randomUUID()}`;
+    return `kanbai-phone-${crypto.randomUUID()}`;
   }
-  return `germaksan-phone-${Date.now()}`;
+  return `kanbai-phone-${Date.now()}`;
 }
 
 export default function OperatorCapturePage() {
   const { user, isAuthenticated, login, logout, fetchMe } = useAuthStore();
   const [email, setEmail] = useState(DEFAULT_EMAIL);
   const [password, setPassword] = useState(DEFAULT_PASSWORD);
+  const [pilotLabel, setPilotLabel] = useState(DEFAULT_PILOT_LABEL);
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingSetup, setLoadingSetup] = useState(false);
   const [device, setDevice] = useState<Device | null>(null);
@@ -85,8 +89,8 @@ export default function OperatorCapturePage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [serial, setSerial] = useState(`GERMAKSAN-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-001`);
-  const [lot, setLot] = useState("GERMAKSAN-PILOT");
+  const [serial, setSerial] = useState(`FACTORY-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-001`);
+  const [lot, setLot] = useState("FACTORY-PILOT");
   const [submitting, setSubmitting] = useState(false);
   const [inspectionId, setInspectionId] = useState<string | null>(null);
   const [result, setResult] = useState<InspectionResult | null>(null);
@@ -98,14 +102,26 @@ export default function OperatorCapturePage() {
   }, [fetchMe, isAuthenticated]);
 
   useEffect(() => {
+    const storedPilotLabel = localStorage.getItem(PILOT_LABEL_KEY);
+    if (storedPilotLabel?.trim()) {
+      setPilotLabel(storedPilotLabel.trim());
+    }
+  }, []);
+
+  useEffect(() => {
     if (isAuthenticated && user?.email?.toLowerCase() !== DEFAULT_EMAIL) {
       logout().catch(() => undefined);
       setDevice(null);
       setStation(null);
       setProduct(null);
-      toast("Operator ekrani GERMAKSAN pilot oturumu bekliyor", { duration: 5000 });
+      toast("Operator ekrani pilot oturumu bekliyor", { duration: 5000 });
     }
   }, [isAuthenticated, logout, user?.email]);
+
+  const handlePilotLabelChange = (value: string) => {
+    setPilotLabel(value);
+    localStorage.setItem(PILOT_LABEL_KEY, value);
+  };
 
   const previewName = useMemo(() => file?.name.replace(/\.[^.]+$/, "") || "Yeni parca fotografi", [file]);
 
@@ -129,11 +145,11 @@ export default function OperatorCapturePage() {
       setProduct(selectedProduct);
 
       const devices = devicesResponse.data as Device[];
-      let phoneUuid = localStorage.getItem(DEVICE_UUID_KEY);
+      let phoneUuid = localStorage.getItem(DEVICE_UUID_KEY) ?? localStorage.getItem(LEGACY_DEVICE_UUID_KEY);
       if (!phoneUuid) {
         phoneUuid = makePhoneUuid();
-        localStorage.setItem(DEVICE_UUID_KEY, phoneUuid);
       }
+      localStorage.setItem(DEVICE_UUID_KEY, phoneUuid);
 
       const existing = devices.find((item) => item.device_uuid === phoneUuid) ?? null;
       if (existing) {
@@ -144,8 +160,8 @@ export default function OperatorCapturePage() {
       try {
         const { data } = await devicesApi.register({
           device_uuid: phoneUuid,
-          name: "GERMAKSAN Phone Capture",
-          location_label: "GERMAKSAN / Mobile QC",
+          name: `${pilotLabel.trim() || DEFAULT_PILOT_LABEL} Phone Capture`,
+          location_label: `${pilotLabel.trim() || DEFAULT_PILOT_LABEL} / Mobile QC`,
           station_id: selectedStation?.id,
         });
         setDevice(data as Device);
@@ -163,7 +179,7 @@ export default function OperatorCapturePage() {
     } finally {
       setLoadingSetup(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, pilotLabel]);
 
   useEffect(() => {
     loadOrRegisterDevice().catch(() => undefined);
@@ -310,7 +326,9 @@ export default function OperatorCapturePage() {
             <section className="rounded-2xl border border-white/10 bg-[#111722] p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-[#FF7A00]">GERMAKSAN Pilot</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#FF7A00]">
+                    {pilotLabel.trim() || DEFAULT_PILOT_LABEL}
+                  </p>
                   <h1 className="mt-1 text-2xl font-semibold">Fotograf gonder</h1>
                   <p className="mt-2 text-sm leading-6 text-white/55">
                     Parca fotografini cek, AI analizini baslat. Sonuc kalite sorumlusunun dashboard'una duser.
@@ -320,6 +338,15 @@ export default function OperatorCapturePage() {
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                <label className="col-span-2 block rounded-xl bg-black/25 p-3">
+                  <span className="mb-1 block text-white/40">Pilot / fabrika adi</span>
+                  <input
+                    value={pilotLabel}
+                    onChange={(event) => handlePilotLabelChange(event.target.value)}
+                    placeholder="Orn. Batarya Montaj Pilot"
+                    className="w-full border-0 bg-transparent text-sm font-semibold text-white outline-none placeholder:text-white/25"
+                  />
+                </label>
                 <div className="rounded-xl bg-black/25 p-3">
                   <p className="text-white/40">Operator</p>
                   <p className="mt-1 truncate font-semibold">{user?.full_name ?? "Pilot"}</p>

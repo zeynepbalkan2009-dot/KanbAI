@@ -105,7 +105,7 @@ The plant manager sees where quality risk is forming in real time.
 URL:
 
 ```text
-https://localhost/dashboard/capture
+http://<laptop-ip>/operator/capture
 ```
 
 Show:

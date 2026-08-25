@@ -166,7 +166,7 @@ function ActivateDeviceForm() {
                   This tablet is now paired with the factory account and can start capturing inspections.
                 </p>
                 <Link
-                  href="/dashboard/capture"
+                  href="/operator/capture"
                   className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#FF7A00] px-5 py-3 text-sm font-semibold text-black transition hover:bg-orange-400"
                 >
                   Open capture

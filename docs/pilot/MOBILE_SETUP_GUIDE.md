@@ -1,30 +1,30 @@
 # Mobile Setup Guide
 
-## Tablet HTTPS Pilot Mode
+## Phone/Tablet Pilot Mode
 
-Browser camera access requires a secure origin. `localhost` works on the laptop, but a tablet opening `http://<laptop-ip>` will usually be blocked by the browser.
+The laptop dashboard is for the quality owner. The phone/tablet screen is only for operator photo capture.
 
-Use HTTPS pilot mode for tablet trials:
+Start the local GERMAKSAN pilot:
 
 ```powershell
-.\scripts\start-pilot-https.ps1 -PrimeDemo
+.\scripts\start-germaksan-pilot.ps1 -Build
 ```
 
-Then open the tablet URL:
+Then open this URL on the phone/tablet while it is on the same Wi-Fi:
 
 ```text
-https://<laptop-ip>/dashboard/capture
+http://<laptop-ip>/operator/capture
 ```
 
-The local certificate is self-signed. The tablet browser may show a warning on first open. For a real factory pilot, trust the generated certificate on the tablet or use a trusted certificate/tunnel.
+Use the plain `http://` operator URL for the local pilot unless a trusted certificate has been installed on the phone. This avoids self-signed certificate warnings during the first factory visit.
 
 ## Device Activation
 
 1. Open `Factory Devices` from the admin dashboard.
 2. Create an activation token for the target station.
-3. Open `https://<laptop-ip>/activate-device?token=...` on the tablet.
+3. Open `http://<laptop-ip>/activate-device?token=...` on the tablet.
 4. Confirm device name and location label.
-5. After activation, open `Capture` on the same tablet.
+5. After activation, open `http://<laptop-ip>/operator/capture` on the same tablet.
 6. The app should send periodic heartbeat updates.
 
 ## Photo Upload

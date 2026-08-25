@@ -78,16 +78,16 @@ https://localhost/dashboard/executive
 Phone capture:
 
 ```text
-https://<laptop-ip>/dashboard/capture
+http://<laptop-ip>/operator/capture
 ```
 
 Device activation:
 
 ```text
-https://<laptop-ip>/activate-device?token=<activation-token>
+http://<laptop-ip>/activate-device?token=<activation-token>
 ```
 
-The phone and laptop must be on the same Wi-Fi. Phone browsers require HTTPS for camera access, so accept the local certificate warning during the first controlled session.
+The phone and laptop must be on the same Wi-Fi. Use `http://<laptop-ip>/operator/capture` for the first controlled session; HTTPS can be enabled later after installing a trusted local certificate on the phone.
 
 ## Factory Flow
 
@@ -108,7 +108,7 @@ The phone and laptop must be on the same Wi-Fi. Phone browsers require HTTPS for
 
 ## Success Criteria
 
-- Phone camera opens on HTTPS.
+- Phone operator screen opens on the same Wi-Fi.
 - Captured images appear in the laptop dashboard.
 - Inspection records are created with station/product/lot context.
 - HITL approve/reject/wrong prediction actions update the record.

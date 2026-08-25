@@ -6,7 +6,6 @@ import {
   Activity,
   AlertTriangle,
   ArrowRight,
-  Camera,
   CheckCircle2,
   Cpu,
   Factory,
@@ -218,13 +217,6 @@ export default function FactoryOverviewPage() {
                 <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
                 Refresh
               </button>
-              <Link
-                href="/dashboard/capture"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#FF7A00] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-orange-400"
-              >
-                <Camera size={16} />
-                Start inspection
-              </Link>
             </div>
           </div>
         </header>

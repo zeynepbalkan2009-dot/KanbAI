@@ -182,10 +182,10 @@ export default function ExecutiveDashboardPage() {
 
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
-                  href="/dashboard/capture"
+                  href="/dashboard/inspections"
                   className="inline-flex items-center gap-2 rounded-xl bg-[#FF7A00] px-5 py-3 text-sm font-semibold text-black transition hover:bg-orange-400"
                 >
-                  Run live inspection
+                  Open inspection records
                   <ArrowRight size={16} />
                 </Link>
                 <Link

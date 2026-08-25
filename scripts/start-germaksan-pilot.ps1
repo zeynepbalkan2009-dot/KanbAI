@@ -75,6 +75,6 @@ Write-Host ""
 Write-Host "GERMAKSAN laptop pilot is starting." -ForegroundColor Green
 Write-Host "Laptop dashboard: https://localhost/dashboard/executive" -ForegroundColor White
 Write-Host "Phone capture:     http://$IpAddress/operator/capture" -ForegroundColor White
-Write-Host "Device activation: https://$IpAddress/activate-device?token=<activation-token>" -ForegroundColor White
+Write-Host "Device activation: http://$IpAddress/activate-device?token=<activation-token>" -ForegroundColor White
 Write-Host ""
 Write-Host "Keep the laptop and phone on the same Wi-Fi. The phone capture route uses local HTTP to avoid Android self-signed certificate blocking." -ForegroundColor Yellow

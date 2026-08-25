@@ -29,4 +29,5 @@ if ($PrimeDemo) {
 Write-Host ""
 Write-Host "KanbAI HTTPS pilot mode is starting." -ForegroundColor Green
 Write-Host "Laptop URL: https://localhost/dashboard/executive" -ForegroundColor White
-Write-Host "Tablet URL: use https://<laptop-ip>/dashboard/capture" -ForegroundColor White
+Write-Host "Operator URL: use http://<laptop-ip>/operator/capture for the first local phone test" -ForegroundColor White
+Write-Host "HTTPS operator URL after trusting the certificate: https://<laptop-ip>/operator/capture" -ForegroundColor White

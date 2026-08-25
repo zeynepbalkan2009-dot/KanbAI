@@ -118,10 +118,6 @@ export default function PilotWorkspacePage() {
                 Manage the first factory trial like a familiar account workspace: scope, readiness, data collection, risk, owners and next actions in one place.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/dashboard/capture" className="inline-flex items-center gap-2 rounded-xl bg-[#FF7A00] px-5 py-3 text-sm font-semibold text-black transition hover:bg-orange-400">
-                  Run station capture
-                  <Camera size={16} />
-                </Link>
                 <Link href="/dashboard/hitl" className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.07]">
                   Open review queue
                   <ClipboardCheck size={16} />
@@ -331,7 +327,7 @@ export default function PilotWorkspacePage() {
           <div className="grid gap-5 md:grid-cols-4">
             {[
               ["Device activation", "Pair tablet to station", TabletSmartphone, "/dashboard/devices"],
-              ["Live station feed", "Capture the next part", Wifi, "/dashboard/capture"],
+              ["Live inspection feed", "Follow phone uploads", Wifi, "/dashboard/inspections"],
               ["Quality CRM", "Review inspection records", ClipboardCheck, "/dashboard/inspections"],
               ["Continuous learning", "Show model registry", Zap, "/dashboard/mlops"],
             ].map(([title, detail, Icon, href]) => (

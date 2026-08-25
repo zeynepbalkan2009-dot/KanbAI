@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import toast from "react-hot-toast";
 import {
   Activity,
   BatteryMedium,
-  Camera,
   CheckCircle2,
   Clock3,
   Copy,
@@ -222,13 +220,6 @@ export default function DevicesPage() {
                 <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
                 Refresh
               </button>
-              <Link
-                href="/dashboard/capture"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#FF7A00] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-orange-400"
-              >
-                <Camera size={16} />
-                Open Capture
-              </Link>
             </div>
           </div>
         </section>

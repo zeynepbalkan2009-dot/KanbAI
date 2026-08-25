@@ -94,6 +94,6 @@ if ($openssl) {
 Write-Host "PASS Local HTTPS certificate created" -ForegroundColor Green
 Write-Host "Certificate: $crtPath" -ForegroundColor Gray
 Write-Host "Key:         $keyPath" -ForegroundColor Gray
-Write-Host "Tablet URL:  https://$IpAddress/dashboard/capture" -ForegroundColor White
+Write-Host "Operator URL: https://$IpAddress/operator/capture" -ForegroundColor White
 Write-Host ""
 Write-Host "Note: Browsers will warn because this is self-signed. For factory pilots, trust this certificate on the tablet or use a trusted tunnel/certificate." -ForegroundColor Yellow

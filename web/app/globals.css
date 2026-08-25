@@ -30,6 +30,28 @@
   color: #0b1020 !important;
 }
 
+.dashboard-light .bg-\[\#090B10\],
+.dashboard-light .bg-\[\#0D121B\],
+.dashboard-light .bg-\[\#111722\],
+.dashboard-light .bg-\[\#111722\]\/95 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+  color: #0b1020 !important;
+}
+
+.dashboard-light .min-h-full.bg-\[\#090B10\] {
+  background-color: #f5f7fb !important;
+}
+
+.dashboard-light .bg-white\/\[0\.03\],
+.dashboard-light .bg-white\/\[0\.04\],
+.dashboard-light .bg-white\/\[0\.05\],
+.dashboard-light .bg-black\/25 {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
 .dashboard-light [class*="bg-black/"] {
   background: #f8fafc !important;
 }
@@ -46,8 +68,22 @@
   color: #64748b !important;
 }
 
+.dashboard-light .text-white,
+.dashboard-light .text-slate-200,
+.dashboard-light .text-slate-300,
+.dashboard-light .text-slate-400,
+.dashboard-light .text-slate-500 {
+  color: #334155 !important;
+}
+
 .dashboard-light :where([class~="text-white"]):not([class*="bg-emerald"]):not([class*="bg-red"]):not([class*="bg-[#FF7A00]"]):not([class*="bg-[#063f63]"]) {
   color: #0b1020 !important;
+}
+
+.dashboard-light [class*="bg-emerald"][class~="text-white"],
+.dashboard-light [class*="bg-red"][class~="text-white"],
+.dashboard-light [class*="bg-[#063f63]"][class~="text-white"] {
+  color: #ffffff !important;
 }
 
 /* Investor landing page. Namespaced so the authenticated product UI remains unchanged. */

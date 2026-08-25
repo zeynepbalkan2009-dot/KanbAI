@@ -22,7 +22,7 @@ The first usable batch is Roboflow Universe datasets that currently show
 | --- | ---: | --- | --- |
 | Defects metal surface | 484 | Object detection | Small, fast first download for metal surface defect demos. |
 | Sheet Metal Defect Detection | 2,277 | Object detection | Best first candidate for YOLOv8 experimentation. |
-| Battery Detection | 8,591 | Object detection | Battery-pilot scope gate and first battery-object detector. |
+| Battery Detection | 12,631 model version images | Object detection | Battery-pilot scope gate and first battery-object detector. |
 | PCB Component Detection v2 | 1,248 | Object detection | Battery assembly adjacent component presence/orientation cases. |
 | weld defects | 2,000 | Object detection | Adds welding-specific factory story. |
 | Steel rope defect detection | 305 | Object detection | Narrow safety/maintenance example. |

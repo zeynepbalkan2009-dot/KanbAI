@@ -76,13 +76,14 @@
       "task": "object_detection",
       "license": "CC BY 4.0",
       "source_url": "https://universe.roboflow.com/project-tics-ylrlr/battery-detection-sszwf",
-      "image_count": 8591,
+      "image_count": 12631,
       "classes": [
-        "Automotive Battery",
+        "Automotive battery",
         "Bike Battery",
-        "Dry Battery",
+        "Dry Cell",
         "Laptop Battery",
-        "Smartphone Battery"
+        "Smart Phone",
+        "Toy Battery"
       ],
       "recommended_use": "Battery-pilot scope gate and first battery-object detector before private factory photos arrive.",
       "attribution": "Battery Detection Dataset by Project TICS, Roboflow Universe, CC BY 4.0."

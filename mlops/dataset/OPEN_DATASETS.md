@@ -59,6 +59,24 @@ mlops/dataset/versions/open_dataset_manifest.json
 
 Both directories are ignored by git.
 
+## Fast Battery Smoke Subset
+
+After `battery_detection_multiclass` is downloaded, create a small deterministic
+subset for laptop-friendly smoke training and scope-gate rehearsal:
+
+```powershell
+.\scripts\prepare-battery-smoke-dataset.ps1
+```
+
+Default output:
+
+```text
+mlops/dataset/processed/open_smoke/battery_open_smoke_v0/data.yaml
+```
+
+The default subset uses 240 training images, 60 validation images and 60 test
+images. Increase the limits only after the quick local loop works.
+
 ## What Not To Use Without Permission
 
 - Vendor or competitor website images.

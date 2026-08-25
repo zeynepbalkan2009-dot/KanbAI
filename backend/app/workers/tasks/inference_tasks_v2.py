@@ -165,11 +165,17 @@ def make_inference_task(celery_app):
             }
             _publish(redis_url, tenant_id, ws_event)
 
+            result_confidence = result["confidence"]
+            confidence_text = (
+                f"{result_confidence:.3f}"
+                if isinstance(result_confidence, (int, float))
+                else "n/a"
+            )
             logger.info(
                 f"inference_complete "
                 f"id={inspection_id} "
                 f"decision={decision} "
-                f"confidence={result['confidence']:.3f} "
+                f"confidence={confidence_text} "
                 f"latency={elapsed}ms"
             )
             return ws_event
@@ -223,8 +229,11 @@ def _run_inference_sync(image_path: str, thresholds: Optional[dict]) -> dict:
 
     from mlops.inference.inference_engine import run_inference, ThresholdConfig
 
-    mode       = os.environ.get("AI_INFERENCE_MODE", "mock")
-    model_path = os.environ.get("ONNX_MODEL_PATH", "models/best.onnx")
+    mode = os.environ.get("AI_INFERENCE_MODE", "mock")
+    if mode == "onnx":
+        model_path = os.environ.get("ONNX_MODEL_PATH", "models/best.onnx")
+    else:
+        model_path = os.environ.get("YOLO_MODEL_PATH", "models/best.pt")
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)

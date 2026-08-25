@@ -35,20 +35,29 @@ For data collection without model weights:
 
 ```env
 AI_INFERENCE_MODE=mock
-YOLO_MODEL_PATH=/app/models/germaksan-v0.pt
+YOLO_MODEL_PATH=/app/models/battery_open_smoke_v0.pt
 ```
 
-For real YOLO inference:
+Recommended before the first factory visit: pilot-safe YOLO scope mode.
+This uses YOLO to reject unrelated images before scoring, then keeps quality
+decisions in the human review flow until enough factory-specific labels exist.
+
+```env
+AI_INFERENCE_MODE=pilot_yolo_scope
+YOLO_MODEL_PATH=/app/models/battery_open_smoke_v0.pt
+```
+
+For direct YOLO defect inference after a factory-approved defect model exists:
 
 ```env
 AI_INFERENCE_MODE=yolo
-YOLO_MODEL_PATH=/app/models/germaksan-v0.pt
+YOLO_MODEL_PATH=/app/models/factory-defect-v1.pt
 ```
 
 Place the local model file here:
 
 ```text
-D:\kanba-qc-platform\qc-platform\backend\models\germaksan-v0.pt
+D:\kanba-qc-platform\qc-platform\backend\models\<model-name>.pt
 ```
 
 Do not commit model weights, raw factory images, `.env`, certificates, or datasets to GitHub.
@@ -61,7 +70,14 @@ Data collection / HITL mode:
 .\scripts\start-germaksan-pilot.ps1 -Build
 ```
 
-Real YOLO mode after the `.pt` file is present and `.env` has `AI_INFERENCE_MODE=yolo`:
+Prepare the local pilot-safe YOLO scope model:
+
+```powershell
+.\scripts\prepare-pilot-yolo-scope.ps1
+```
+
+YOLO-backed pilot mode after the `.pt` file is present and `.env` has
+`AI_INFERENCE_MODE=pilot_yolo_scope` or `AI_INFERENCE_MODE=yolo`:
 
 ```powershell
 .\scripts\start-germaksan-pilot.ps1 -Build -Yolo

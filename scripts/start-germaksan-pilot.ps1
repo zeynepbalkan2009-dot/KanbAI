@@ -49,10 +49,10 @@ if ($Yolo) {
   $modelPath = $envValues["YOLO_MODEL_PATH"]
   $hostModelPath = $modelPath -replace "^/app/models/", "backend\models\"
   if (-not (Test-Path -LiteralPath $hostModelPath)) {
-    throw "YOLO model was not found at $hostModelPath. Place germaksan-v0.pt there or start without -Yolo for HITL data collection."
+    throw "YOLO model was not found at $hostModelPath. Place a local .pt model there or start without -Yolo for HITL data collection."
   }
-  if ($envValues["AI_INFERENCE_MODE"] -ne "yolo") {
-    throw "Set AI_INFERENCE_MODE=yolo in .env before starting with -Yolo."
+  if ($envValues["AI_INFERENCE_MODE"] -notin @("yolo", "pilot_yolo_scope")) {
+    throw "Set AI_INFERENCE_MODE=yolo or AI_INFERENCE_MODE=pilot_yolo_scope in .env before starting with -Yolo."
   }
   $composeFiles += "docker-compose.yolo.yml"
 }

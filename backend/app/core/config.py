@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     minio_secure: bool = False
 
     # AI
-    ai_inference_mode: Literal["mock", "yolo", "onnx"] = "mock"
+    ai_inference_mode: Literal["mock", "yolo", "onnx", "pilot_yolo_scope"] = "mock"
     ai_mock_delay_min: float = 2.0
     ai_mock_delay_max: float = 4.0
     ai_confidence_pass_threshold: float = 0.75

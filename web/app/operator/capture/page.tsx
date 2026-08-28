@@ -15,7 +15,7 @@ import {
   Wifi,
   XCircle,
 } from "lucide-react";
-import { devicesApi, inspectionsApi, setupApi } from "@/lib/api";
+import { batteryApi, devicesApi, inspectionsApi, setupApi } from "@/lib/api";
 import { useAuthStore } from "@/lib/store/auth";
 
 type Device = {
@@ -58,6 +58,15 @@ type InspectionResult = {
   inference_latency_ms?: number;
 };
 
+type BatteryUnit = {
+  id: string;
+  product_id: string;
+  serial_number: string;
+  barcode?: string | null;
+  status: string;
+  current_step: number;
+};
+
 const DEVICE_UUID_KEY = "kanbai_device_uuid";
 const LEGACY_DEVICE_UUID_KEYS = ["kanbai_operator_phone_uuid", "kanbai_pilot_phone_uuid_legacy"];
 const PILOT_LABEL_KEY = "kanbai_operator_pilot_label";
@@ -98,6 +107,8 @@ export default function OperatorCapturePage() {
   const [station, setStation] = useState<Station | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [product, setProduct] = useState<Product | null>(null);
+  const [batteryUnits, setBatteryUnits] = useState<BatteryUnit[]>([]);
+  const [batteryUnit, setBatteryUnit] = useState<BatteryUnit | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [serial, setSerial] = useState(`CAPTURE-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-001`);
@@ -178,10 +189,11 @@ export default function OperatorCapturePage() {
     if (!isAuthenticated) return;
     setLoadingSetup(true);
     try {
-      const [devicesResponse, stationsResponse, productsResponse] = await Promise.all([
+      const [devicesResponse, stationsResponse, productsResponse, batteryUnitsResponse] = await Promise.all([
         devicesApi.list(),
         setupApi.stations({ active_only: true }),
         setupApi.products({ active_only: true }),
+        batteryApi.units({ limit: 200 }),
       ]);
 
       const stations = stationsResponse.data as Station[];
@@ -193,6 +205,7 @@ export default function OperatorCapturePage() {
       setStation(selectedStation);
       setProducts(availableProducts);
       setProduct(selectedProduct);
+      setBatteryUnits(batteryUnitsResponse.data as BatteryUnit[]);
 
       const devices = devicesResponse.data as Device[];
       let phoneUuid = localStorage.getItem(DEVICE_UUID_KEY);
@@ -233,6 +246,18 @@ export default function OperatorCapturePage() {
   }, [isAuthenticated, pilotLabel]);
 
   useEffect(() => {
+    if (product?.defect_policy?.industry_domain !== "battery_assembly") {
+      setBatteryUnit(null);
+      return;
+    }
+    const matching = batteryUnits.find(
+      (item) => item.product_id === product.id && item.status !== "completed",
+    ) ?? null;
+    setBatteryUnit(matching);
+    if (matching) setSerial(matching.serial_number);
+  }, [batteryUnits, product?.id, product?.defect_policy?.industry_domain]);
+
+  useEffect(() => {
     loadOrRegisterDevice().catch(() => undefined);
   }, [loadOrRegisterDevice]);
 
@@ -262,6 +287,14 @@ export default function OperatorCapturePage() {
       toast.error("Fotograf ve cihaz gerekli");
       return;
     }
+    if (product?.defect_policy?.industry_domain === "battery_assembly" && !batteryUnit) {
+      toast.error("Batarya fotografi icin once seri numarali batarya kaydi secin");
+      return;
+    }
+    if (batteryUnit?.current_step === 6) {
+      toast.error("EOL asamasi fotografla kapatilamaz; olcum verilerini Batarya Izlenebilirlik ekranina girin");
+      return;
+    }
 
     setSubmitting(true);
     setResult(null);
@@ -274,7 +307,20 @@ export default function OperatorCapturePage() {
         product_id: product?.id,
       });
       setInspectionId(data.inspection_id);
-      toast.success("Fotograf kalite kuyruguna gonderildi");
+      if (batteryUnit) {
+        try {
+          await batteryApi.addEvidence(batteryUnit.id, batteryUnit.current_step, {
+            station_id: station?.id,
+            inspection_id: data.inspection_id,
+            notes: `Operator capture / ${lot}`,
+          });
+          toast.success(`Fotograf batarya ${batteryUnit.serial_number} / adim ${batteryUnit.current_step} kanitina baglandi`);
+        } catch (linkError: any) {
+          toast.error(`Fotograf kaydedildi fakat batarya adimina baglanamadi: ${linkError?.response?.data?.detail ?? "bilinmeyen hata"}`);
+        }
+      } else {
+        toast.success("Fotograf insan inceleme kuyruguna gonderildi");
+      }
     } catch {
       toast.error("Yukleme basarisiz");
       setSubmitting(false);
@@ -430,6 +476,36 @@ export default function OperatorCapturePage() {
                       : `${domainLabel} - Veri toplama modu: Urune ozel operasyon ve kusur kriterleri henuz tanimli degil.`}
                   </p>
                 </label>
+                {product?.defect_policy?.industry_domain === "battery_assembly" && (
+                  <label className="col-span-2 block rounded-xl border border-sky-400/20 bg-sky-400/10 p-3">
+                    <span className="text-sky-100/70">Batarya seri kaydi / mevcut asama</span>
+                    <select
+                      value={batteryUnit?.id ?? ""}
+                      onChange={(event) => {
+                        const selectedUnit = batteryUnits.find((item) => item.id === event.target.value) ?? null;
+                        setBatteryUnit(selectedUnit);
+                        if (selectedUnit) setSerial(selectedUnit.serial_number);
+                      }}
+                      className="mt-2 w-full rounded-lg border border-white/10 bg-[#090B10] px-3 py-2 text-sm font-semibold text-white outline-none focus:border-[#00C2FF]"
+                    >
+                      <option value="">Batarya seri kaydi secin</option>
+                      {batteryUnits
+                        .filter((item) => item.product_id === product.id && item.status !== "completed")
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.serial_number}{item.barcode ? ` / ${item.barcode}` : ""} - Adim {item.current_step}/6 ({item.status})
+                          </option>
+                        ))}
+                    </select>
+                    <p className="mt-2 text-[11px] text-sky-100/70">
+                      {batteryUnit
+                        ? batteryUnit.current_step === 6
+                          ? "EOL olcumleri Batarya Izlenebilirlik ekraninda girilmelidir."
+                          : `Bu fotograf otomatik olarak adim ${batteryUnit.current_step} kanitina baglanacak; kalite karari insan tarafindan verilecek.`
+                        : "Fotograf gondermeden once seri numarali batarya kaydi zorunludur."}
+                    </p>
+                  </label>
+                )}
               </div>
             </section>
 

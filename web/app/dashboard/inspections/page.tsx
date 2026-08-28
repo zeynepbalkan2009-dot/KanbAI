@@ -57,13 +57,12 @@ function nextAction(decision: string, operatorDecision?: string) {
   if (operatorDecision) return "Closed";
   if (decision === "pending") return "AI processing";
   if (decision === "error") return "Retry required";
-  if (decision === "out_of_scope") return "Rejected by scope gate";
-  if (decision === "pass") return "Pilot review";
-  return "Quality review";
+  if (decision === "out_of_scope") return "Human scope review";
+  return "Human quality review";
 }
 
 function defectLabel(item?: Inspection | null) {
-  if (item?.decision === "out_of_scope") return "Not an industrial metal part";
+  if (item?.decision === "out_of_scope") return "Outside configured product scope";
   return item?.defects?.map((d) => d.class_name).join(", ") || "No defect label";
 }
 
@@ -215,7 +214,7 @@ export default function InspectionsPage() {
             <table className="w-full min-w-[980px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-                  {["Record", "Decision", "Confidence", "Defects", "Owner", "Next action", "Created", ""].map((head) => (
+                  {["Record", "Decision", "Model signal", "Defects", "Owner", "Next action", "Created", ""].map((head) => (
                     <th key={head} className="px-3 py-3 font-medium">{head}</th>
                   ))}
                 </tr>
@@ -315,7 +314,7 @@ export default function InspectionsPage() {
                   <div className="mt-2"><DecisionBadge decision={selected.decision} /></div>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-white p-4">
-                  <p className="text-xs text-slate-500">Confidence</p>
+                  <p className="text-xs text-slate-500">Model signal (not quality score)</p>
                   <p className="mt-1 text-2xl font-semibold text-[#0b1020]">
                     {selected.decision !== "out_of_scope" && selected.confidence ? `${Math.round(selected.confidence * 100)}%` : "--"}
                   </p>

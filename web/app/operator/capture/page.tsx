@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import {
   Camera,
@@ -36,6 +36,18 @@ type Product = {
   id: string;
   sku: string;
   name: string;
+  revision?: string | null;
+  defect_policy?: {
+    industry_domain?: "steel_equipment" | "battery_assembly";
+    operation_stage?: string;
+    inspection_mode?: string;
+    defect_classes?: string[];
+    quality_decision_enabled?: boolean;
+    capture_mode?: "conveyor" | "fixed_station" | "handheld";
+    capture_strategy?: "manual" | "stability_gated" | "external_trigger" | "continuous";
+    native_camera_required?: boolean;
+    alignment_overlay_required?: boolean;
+  };
 };
 
 type InspectionResult = {
@@ -46,14 +58,10 @@ type InspectionResult = {
   inference_latency_ms?: number;
 };
 
-const DEVICE_UUID_KEY = "kanbai_operator_phone_uuid";
-const LEGACY_DEVICE_UUID_KEY = "kanbai_pilot_phone_uuid_legacy";
+const DEVICE_UUID_KEY = "kanbai_device_uuid";
+const LEGACY_DEVICE_UUID_KEYS = ["kanbai_operator_phone_uuid", "kanbai_pilot_phone_uuid_legacy"];
 const PILOT_LABEL_KEY = "kanbai_operator_pilot_label";
 const DEFAULT_PILOT_LABEL = "Pilot Fabrika";
-const DEFAULT_EMAIL = "pilot@factory.local";
-const DEFAULT_PASSWORD = "PilotFactory2026!";
-const LEGACY_EMAIL = `pilot@${"germak" + "san"}.com.tr`;
-const LEGACY_PASSWORD = `${"Germak" + "san"}Pilot2026!`;
 
 function resultLabel(decision?: InspectionResult["decision"]) {
   if (decision === "pass") return "PASS";
@@ -80,22 +88,26 @@ function makePhoneUuid() {
 }
 
 export default function OperatorCapturePage() {
-  const { user, isAuthenticated, login, logout, fetchMe } = useAuthStore();
-  const [email, setEmail] = useState(DEFAULT_EMAIL);
-  const [password, setPassword] = useState(DEFAULT_PASSWORD);
+  const { user, isAuthenticated, login, fetchMe } = useAuthStore();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [pilotLabel, setPilotLabel] = useState(DEFAULT_PILOT_LABEL);
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingSetup, setLoadingSetup] = useState(false);
   const [device, setDevice] = useState<Device | null>(null);
   const [station, setStation] = useState<Station | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [product, setProduct] = useState<Product | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [serial, setSerial] = useState(`FACTORY-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-001`);
-  const [lot, setLot] = useState("FACTORY-PILOT");
+  const [serial, setSerial] = useState(`CAPTURE-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-001`);
+  const [lot, setLot] = useState(`COLLECTION-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}`);
   const [submitting, setSubmitting] = useState(false);
   const [inspectionId, setInspectionId] = useState<string | null>(null);
   const [result, setResult] = useState<InspectionResult | null>(null);
+  const [motionEnabled, setMotionEnabled] = useState(false);
+  const [deviceStable, setDeviceStable] = useState(false);
+  const stableSamples = useRef(0);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -110,23 +122,57 @@ export default function OperatorCapturePage() {
     }
   }, []);
 
-  useEffect(() => {
-    const normalizedEmail = user?.email?.toLowerCase();
-    if (isAuthenticated && normalizedEmail !== DEFAULT_EMAIL && normalizedEmail !== LEGACY_EMAIL) {
-      logout().catch(() => undefined);
-      setDevice(null);
-      setStation(null);
-      setProduct(null);
-      toast("Operator ekrani pilot oturumu bekliyor", { duration: 5000 });
-    }
-  }, [isAuthenticated, logout, user?.email]);
-
   const handlePilotLabelChange = (value: string) => {
     setPilotLabel(value);
     localStorage.setItem(PILOT_LABEL_KEY, value);
   };
 
   const previewName = useMemo(() => file?.name.replace(/\.[^.]+$/, "") || "Yeni parca fotografi", [file]);
+  const configuredDefects = product?.defect_policy?.defect_classes ?? [];
+  const domainLabel = product?.defect_policy?.industry_domain === "steel_equipment"
+    ? "Celik ve haddehane ekipmani"
+    : product?.defect_policy?.industry_domain === "battery_assembly"
+      ? "Batarya montaj"
+      : "Alan tanimlanmadi";
+  const profileReady = Boolean(
+    product?.defect_policy?.quality_decision_enabled &&
+    product?.defect_policy?.operation_stage &&
+    configuredDefects.length > 0
+  );
+  const captureMode = product?.defect_policy?.capture_mode ?? "fixed_station";
+  const captureStrategy = product?.defect_policy?.capture_strategy ?? "manual";
+  const alignmentOverlayRequired = product?.defect_policy?.alignment_overlay_required ?? true;
+
+  useEffect(() => {
+    if (!motionEnabled || typeof window === "undefined") return;
+    const handleMotion = (event: DeviceMotionEvent) => {
+      const acceleration = event.acceleration;
+      if (!acceleration) return;
+      const magnitude = Math.sqrt(
+        (acceleration.x ?? 0) ** 2 + (acceleration.y ?? 0) ** 2 + (acceleration.z ?? 0) ** 2
+      );
+      stableSamples.current = magnitude < 0.35 ? stableSamples.current + 1 : 0;
+      setDeviceStable(stableSamples.current >= 8);
+    };
+    window.addEventListener("devicemotion", handleMotion);
+    return () => window.removeEventListener("devicemotion", handleMotion);
+  }, [motionEnabled]);
+
+  const enableMotionAssist = async () => {
+    try {
+      const motionApi = DeviceMotionEvent as typeof DeviceMotionEvent & {
+        requestPermission?: () => Promise<"granted" | "denied">;
+      };
+      if (motionApi.requestPermission && await motionApi.requestPermission() !== "granted") {
+        toast.error("Hareket sensoru izni verilmedi");
+        return;
+      }
+      setMotionEnabled(true);
+      toast.success("Titresim kontrolu etkin");
+    } catch {
+      toast.error("Bu tarayici hareket sensorunu desteklemiyor");
+    }
+  };
 
   const loadOrRegisterDevice = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -139,16 +185,22 @@ export default function OperatorCapturePage() {
       ]);
 
       const stations = stationsResponse.data as Station[];
-      const products = productsResponse.data as Product[];
+      const availableProducts = productsResponse.data as Product[];
       const selectedStation =
         stations.find((item) => item.code?.toUpperCase().includes("PILOT")) ?? stations[0] ?? null;
       const selectedProduct =
-        products.find((item) => item.sku?.toUpperCase().includes("PILOT")) ?? products[0] ?? null;
+        availableProducts.find((item) => item.sku?.toUpperCase().includes("PILOT")) ?? availableProducts[0] ?? null;
       setStation(selectedStation);
+      setProducts(availableProducts);
       setProduct(selectedProduct);
 
       const devices = devicesResponse.data as Device[];
-      let phoneUuid = localStorage.getItem(DEVICE_UUID_KEY) ?? localStorage.getItem(LEGACY_DEVICE_UUID_KEY);
+      let phoneUuid = localStorage.getItem(DEVICE_UUID_KEY);
+      if (!phoneUuid) {
+        phoneUuid = LEGACY_DEVICE_UUID_KEYS
+          .map((key) => localStorage.getItem(key))
+          .find((value): value is string => Boolean(value)) ?? null;
+      }
       if (!phoneUuid) {
         phoneUuid = makePhoneUuid();
       }
@@ -170,12 +222,8 @@ export default function OperatorCapturePage() {
         setDevice(data as Device);
         toast.success("Telefon operator cihazi olarak kaydedildi");
       } catch {
-        const fallback =
-          devices.find((item) => item.name.toLowerCase().includes("phone")) ??
-          devices[0] ??
-          null;
-        if (!fallback) throw new Error("Device registration failed");
-        setDevice(fallback);
+        setDevice(null);
+        throw new Error("Device registration failed; refusing to use another device identity");
       }
     } catch {
       toast.error("Telefon cihazi hazirlanamadi");
@@ -191,12 +239,7 @@ export default function OperatorCapturePage() {
   const handleLogin = async () => {
     setLoadingLogin(true);
     try {
-      try {
-        await login(email.trim(), password);
-      } catch (error) {
-        if (email.trim().toLowerCase() !== DEFAULT_EMAIL) throw error;
-        await login(LEGACY_EMAIL, LEGACY_PASSWORD);
-      }
+      await login(email.trim(), password);
       toast.success("Operator oturumu acildi");
     } catch {
       toast.error("Giris basarisiz");
@@ -365,11 +408,43 @@ export default function OperatorCapturePage() {
                     {loadingSetup ? "Hazirlaniyor" : device?.name ?? "Bekliyor"}
                   </p>
                 </div>
+                <label className="col-span-2 block rounded-xl bg-black/25 p-3">
+                  <span className="text-white/40">Kontrol profili / urun</span>
+                  <select
+                    value={product?.id ?? ""}
+                    onChange={(event) =>
+                      setProduct(products.find((item) => item.id === event.target.value) ?? null)
+                    }
+                    className="mt-2 w-full rounded-lg border border-white/10 bg-[#090B10] px-3 py-2 text-sm font-semibold text-white outline-none focus:border-[#00C2FF]"
+                  >
+                    <option value="">Urun profili secilmedi</option>
+                    {products.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.sku} - {item.name}{item.revision ? ` / ${item.revision}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <p className={`mt-2 text-[11px] font-semibold ${profileReady ? "text-emerald-300" : "text-amber-300"}`}>
+                    {profileReady
+                      ? `${domainLabel}: ${product?.defect_policy?.operation_stage} / ${configuredDefects.join(", ")}`
+                      : `${domainLabel} - Veri toplama modu: Urune ozel operasyon ve kusur kriterleri henuz tanimli degil.`}
+                  </p>
+                </label>
               </div>
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-[#111722] p-4">
-              <label className="flex min-h-[230px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#00C2FF]/35 bg-black/25 p-5 text-center">
+              <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl bg-black/25 p-3"><p className="text-white/40">Parca akisi</p><p className="mt-1 font-semibold">{captureMode === "conveyor" ? "Hareketli bant" : captureMode === "handheld" ? "Elde cihaz" : "Sabit istasyon"}</p></div>
+                <div className="rounded-xl bg-black/25 p-3"><p className="text-white/40">Yakalma</p><p className="mt-1 font-semibold">{captureStrategy === "stability_gated" ? "Stabilite kapili" : captureStrategy === "external_trigger" ? "Harici tetik" : captureStrategy === "continuous" ? "Surekli akis" : "Manuel"}</p></div>
+              </div>
+              {captureStrategy === "stability_gated" && (
+                <button onClick={enableMotionAssist} type="button" className={`mb-3 w-full rounded-xl border px-3 py-2 text-xs font-semibold ${deviceStable ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-amber-400/30 bg-amber-400/10 text-amber-200"}`}>
+                  {!motionEnabled ? "Titresim kontrolunu etkinlestir" : deviceStable ? "Cihaz stabil - cekime hazir" : "Cihazi sabit tutun"}
+                </button>
+              )}
+              <label className="relative flex min-h-[230px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-[#00C2FF]/35 bg-black/25 p-5 text-center">
+                {alignmentOverlayRequired && <div className="pointer-events-none absolute inset-[12%] z-10 rounded-[28px] border-2 border-dashed border-emerald-300/70 shadow-[0_0_0_999px_rgba(0,0,0,0.14)]" />}
                 {previewUrl ? (
                   <img src={previewUrl} alt={previewName} className="max-h-[320px] w-full rounded-xl object-contain" />
                 ) : (
@@ -389,6 +464,17 @@ export default function OperatorCapturePage() {
                   onChange={handleFile}
                 />
               </label>
+
+              {product?.defect_policy?.native_camera_required && (
+                <p className="mt-3 rounded-xl border border-sky-400/20 bg-sky-400/10 p-3 text-xs leading-5 text-sky-100/80">
+                  Bu profil focus/exposure lock ve otonom tetik icin native CameraX/AVFoundation istemcisi gerektirir. Web ekrani su anda guvenli manuel yedektir.
+                </p>
+              )}
+              {captureMode === "conveyor" && (
+                <p className="mt-3 rounded-xl border border-violet-400/20 bg-violet-400/10 p-3 text-xs leading-5 text-violet-100/80">
+                  Hareketli bantta deterministik yakalama icin harici sensor/PLC tetigi veya native surekli kare akisi kullanilmalidir.
+                </p>
+              )}
 
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <label className="block">
@@ -415,7 +501,7 @@ export default function OperatorCapturePage() {
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF7A00] px-4 py-3 font-bold text-black disabled:opacity-50"
               >
                 {submitting ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
-                AI kuyruguna gonder
+                {profileReady ? "Kalite analizine gonder" : "Veri toplama / kapsam analizine gonder"}
               </button>
             </section>
 
@@ -437,7 +523,7 @@ export default function OperatorCapturePage() {
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-xl bg-black/20 p-3">
-                  <p className="opacity-55">Guven</p>
+                  <p className="opacity-55">Kapsam algilama guveni</p>
                   <p className="mt-1 text-xl font-semibold">
                     {result?.decision !== "out_of_scope" && result?.confidence ? `${Math.round(result.confidence * 100)}%` : "--"}
                   </p>
@@ -453,7 +539,7 @@ export default function OperatorCapturePage() {
                 {inspectionId
                   ? result?.decision === "out_of_scope"
                     ? `Muayene kaydi: ${inspectionId.slice(0, 8)}. Endustriyel metal parca algilanmadi; AI puanlama yapmadi.`
-                    : `Muayene kaydi: ${inspectionId.slice(0, 8)}. Pilot modda PASS dahil her fotograf kalite sorumlusunun Inceleme Kuyrugu'na duser.`
+                    : `Muayene kaydi: ${inspectionId.slice(0, 8)}. Bu oran kalite skoru degildir; yalnizca mevcut modelin kapsam algilama guvenidir. Gercek PASS/FAIL, urune ozel kusur modeli ve insan karariyla belirlenir.`
                   : "Henuz fotograf gonderilmedi."}
               </p>
             </section>

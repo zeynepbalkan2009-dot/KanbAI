@@ -63,8 +63,16 @@ api.interceptors.response.use(
     const originalRequest = error.config as AxiosRequestConfig & {
       _retry?: boolean;
     };
+    const requestUrl = originalRequest?.url ?? "";
+    const handlesOwnUnauthorizedError =
+      requestUrl.endsWith("/auth/login") ||
+      requestUrl.endsWith("/devices/activate");
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !handlesOwnUnauthorizedError
+    ) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -153,8 +161,6 @@ export const inspectionsApi = {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
-  review: (id: string, decision: "pass" | "fail", notes?: string) =>
-    api.patch(`/inspections/${id}/review`, { operator_decision: decision, notes }),
 };
 
 export const devicesApi = {
@@ -178,15 +184,53 @@ export const setupApi = {
   stations: (params?: { active_only?: boolean }) => api.get("/stations", { params }),
   productionLines: (params?: { active_only?: boolean }) => api.get("/production-lines", { params }),
   products: (params?: { active_only?: boolean }) => api.get("/products", { params }),
+  updateInspectionProfile: (productId: string, data: {
+    industry_domain: "steel_equipment" | "battery_assembly";
+    operation_stage: string;
+    inspection_mode: "visual_defect" | "assembly_presence" | "dimensional_assist" | "data_collection";
+    capture_mode: "conveyor" | "fixed_station" | "handheld";
+    capture_strategy: "manual" | "stability_gated" | "external_trigger" | "continuous";
+    native_camera_required: boolean;
+    alignment_overlay_required: boolean;
+    defect_classes: string[];
+    human_review_required: boolean;
+    quality_decision_enabled: boolean;
+  }) => api.patch(`/products/${productId}/inspection-profile`, data),
 };
 
 export const hitlApi = {
   queue: () => api.get("/hitl/queue"),
   stats: () => api.get("/hitl/stats"),
   review: (id: string, data: {
-    decision: "pass" | "fail" | "wrong_prediction" | "needs_retrain";
+    decision: "pass" | "fail" | "out_of_scope" | "wrong_prediction" | "needs_retrain";
     corrected_label?: string;
     notes?: string;
     dataset_contribution?: boolean;
   }) => api.post(`/hitl/${id}/review`, data),
+};
+
+export const batteryApi = {
+  workflow: () => api.get("/battery/workflow"),
+  units: (params?: { status?: string; limit?: number }) => api.get("/battery/units", { params }),
+  getUnit: (id: string) => api.get(`/battery/units/${id}`),
+  createUnit: (data: {
+    product_id: string;
+    production_line_id?: string;
+    serial_number: string;
+    barcode?: string;
+    cell_type: "prismatic" | "cylindrical" | "pouch";
+    metadata?: Record<string, unknown>;
+  }) => api.post("/battery/units", data),
+  addEvidence: (unitId: string, stepId: number, data: {
+    station_id?: string;
+    inspection_id?: string;
+    observed_label?: string;
+    notes?: string;
+    test_results?: Record<string, unknown>;
+  }) => api.post(`/battery/units/${unitId}/steps/${stepId}/evidence`, data),
+  reviewEvidence: (evidenceId: string, data: {
+    decision: "pass" | "fail";
+    observed_label: string;
+    notes?: string;
+  }) => api.post(`/battery/evidence/${evidenceId}/review`, data),
 };

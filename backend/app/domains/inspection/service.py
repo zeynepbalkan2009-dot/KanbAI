@@ -53,11 +53,6 @@ class InspectionStats(BaseModel):
     avg_confidence: Optional[float]
 
 
-class ReviewRequest(BaseModel):
-    operator_decision: str  # "pass" | "fail"
-    notes: Optional[str] = None
-
-
 # ── Service ───────────────────────────────────────────────────────────────────
 
 class InspectionService:
@@ -192,26 +187,6 @@ class InspectionService:
             raise NotFoundError("Inspection")
         if str(inspection.factory_id) != self.tenant_id:
             raise TenantIsolationError()
-        return inspection
-
-    async def review_inspection(
-        self, inspection_id: str, decision: str, notes: Optional[str]
-    ) -> InspectionResult:
-        from datetime import timezone
-        from sqlalchemy import update as sa_update
-        inspection = await self.get_inspection(inspection_id)
-        await self.db.execute(
-            sa_update(InspectionResult)
-            .where(InspectionResult.id == inspection_id)
-            .values(
-                operator_decision=decision,
-                operator_id=uuid.UUID(self.user_id),
-                operator_notes=notes,
-                reviewed_at=datetime.now(timezone.utc),
-            )
-        )
-        await self.db.flush()
-        await self.db.refresh(inspection)
         return inspection
 
     async def get_stats(self) -> InspectionStats:

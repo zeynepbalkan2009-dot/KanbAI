@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { inspectionsApi } from "@/lib/api";
+import { hitlApi, inspectionsApi } from "@/lib/api";
 import type { WSEvent } from "@/hooks/useWebSocket";
 
 export interface Inspection {
@@ -109,7 +109,12 @@ export const useInspectionStore = create<InspectionState>((set, get) => ({
   },
 
   reviewInspection: async (id, decision, notes) => {
-    await inspectionsApi.review(id, decision, notes);
+    await hitlApi.review(id, {
+      decision,
+      notes,
+      corrected_label: decision === "pass" ? "good" : undefined,
+      dataset_contribution: true,
+    });
     set((s) => ({
       inspections: s.inspections.map((i) =>
         i.id === id ? { ...i, operator_decision: decision } : i

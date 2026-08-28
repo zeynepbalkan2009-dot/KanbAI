@@ -18,6 +18,16 @@ type QueueItem = {
   defects?: Array<{ class_name: string; confidence: number; bbox?: number[] }>;
   image_key: string;
   created_at: string;
+  product: {
+    product_id?: string | null;
+    sku?: string | null;
+    product_name?: string | null;
+    revision?: string | null;
+    industry_domain?: "steel_equipment" | "battery_assembly" | null;
+    operation_stage?: string | null;
+    defect_classes: string[];
+    allowed_labels: string[];
+  };
 };
 
 type HitlStats = {
@@ -27,8 +37,6 @@ type HitlStats = {
 };
 
 type InboxFilter = "all" | "pass" | "fail" | "review" | "out_of_scope";
-
-const labelOptions = ["crack", "edge_chip", "scratch", "dent", "surface_void", "good", "out_of_scope"];
 
 function DecisionBadge({ decision }: { decision: string }) {
   const classes: Record<string, string> = {
@@ -111,6 +119,9 @@ export default function HitlPage() {
     () => filteredQueue.find((item) => item.id === selectedId) ?? filteredQueue[0],
     [filteredQueue, selectedId],
   );
+  const labelOptions = selected?.product?.allowed_labels?.length
+    ? selected.product.allowed_labels
+    : ["good", "unclassified_defect", "out_of_scope"];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -129,7 +140,12 @@ export default function HitlPage() {
   }, [load]);
 
   useEffect(() => {
-    setCorrectedLabel(selected?.defects?.[0]?.class_name ?? (selected?.decision === "pass" ? "good" : selected?.decision === "out_of_scope" ? "out_of_scope" : "scratch"));
+    const modelLabel = selected?.defects?.[0]?.class_name;
+    setCorrectedLabel(
+      modelLabel && labelOptions.includes(modelLabel)
+        ? modelLabel
+        : "good",
+    );
   }, [selected?.id]);
 
   useEffect(() => {
@@ -155,13 +171,17 @@ export default function HitlPage() {
     };
   }, [selected?.id]);
 
-  const submit = async (decision: "pass" | "fail" | "wrong_prediction" | "needs_retrain") => {
+  const submit = async (decision: "pass" | "fail" | "out_of_scope") => {
     if (!selected) return;
+    if (decision === "fail" && ["good", "out_of_scope"].includes(correctedLabel)) {
+      toast.error("Kusurlu karari icin urun profilinden bir kusur etiketi secin");
+      return;
+    }
     setSubmitting(true);
     try {
       await hitlApi.review(selected.id, {
         decision,
-        corrected_label: correctedLabel,
+        corrected_label: decision === "pass" ? "good" : decision === "out_of_scope" ? "out_of_scope" : correctedLabel,
         notes,
         dataset_contribution: true,
       });
@@ -277,6 +297,11 @@ export default function HitlPage() {
                   Case evidence
                 </h2>
                 <p className="mt-1 font-mono text-xs text-slate-400">{selected?.id ?? "No case selected"}</p>
+                {selected?.product?.sku && (
+                  <p className="mt-1 text-xs font-medium text-sky-700">
+                    {selected.product.sku} / {selected.product.product_name} {selected.product.revision ? `/ ${selected.product.revision}` : ""}
+                  </p>
+                )}
               </div>
               {selected && <DecisionBadge decision={selected.decision} />}
             </div>
@@ -345,6 +370,10 @@ export default function HitlPage() {
                   {labelOptions.map((label) => <option key={label} value={label}>{label}</option>)}
                 </select>
               </label>
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                <p><b>Domain:</b> {selected?.product?.industry_domain ?? "not configured"}</p>
+                <p className="mt-1"><b>Operation:</b> {selected?.product?.operation_stage ?? "not configured"}</p>
+              </div>
               <label className="mt-4 block">
                 <span className="mb-1.5 block text-xs text-slate-500">Resolution notes</span>
                 <textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={4} className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-[#00C2FF]" />
@@ -362,13 +391,13 @@ export default function HitlPage() {
               </h2>
               <div className="grid grid-cols-2 gap-2">
                 <button disabled={!selected || submitting} onClick={() => submit("pass")} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-40">
-                  <CheckCircle2 className="mx-auto mb-1" size={20} /> Approve
+                  <CheckCircle2 className="mx-auto mb-1" size={20} /> Uygun (PASS)
                 </button>
                 <button disabled={!selected || submitting} onClick={() => submit("fail")} className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-40">
-                  <XCircle className="mx-auto mb-1" size={20} /> Reject
+                  <XCircle className="mx-auto mb-1" size={20} /> Kusurlu (FAIL)
                 </button>
-                <button disabled={!selected || submitting} onClick={() => submit("wrong_prediction")} className="col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-40">
-                  <AlertTriangle className="mr-2 inline" size={18} /> Wrong prediction
+                <button disabled={!selected || submitting} onClick={() => submit("out_of_scope")} className="col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40">
+                  <AlertTriangle className="mr-2 inline" size={18} /> Kapsam disi
                 </button>
               </div>
             </section>

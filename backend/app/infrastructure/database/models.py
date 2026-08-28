@@ -290,6 +290,60 @@ class DeviceActivationToken(Base):
     __table_args__ = (Index("ix_activation_factory_expires", "factory_id", "expires_at"),)
 
 
+class BatteryUnit(Base):
+    """One traceable battery product moving through the six-stage pilot workflow."""
+
+    __tablename__ = "battery_units"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    factory_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("factories.id"), nullable=False)
+    product_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False)
+    production_line_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("production_lines.id"))
+    serial_number: Mapped[str] = mapped_column(String(120), nullable=False)
+    barcode: Mapped[Optional[str]] = mapped_column(String(255))
+    cell_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), default="in_progress", nullable=False)
+    current_step: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    metadata_json: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, default=dict)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("factory_id", "serial_number", name="uq_battery_unit_factory_serial"),
+        UniqueConstraint("factory_id", "barcode", name="uq_battery_unit_factory_barcode"),
+        Index("ix_battery_units_factory_status", "factory_id", "status"),
+    )
+
+
+class BatteryStepEvidence(Base):
+    """Human-reviewed evidence for one battery workflow stage and attempt."""
+
+    __tablename__ = "battery_step_evidence"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    factory_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("factories.id"), nullable=False)
+    battery_unit_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("battery_units.id"), nullable=False)
+    station_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("stations.id"))
+    inspection_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("inspection_results.id"))
+    step_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    step_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    expected_label: Mapped[str] = mapped_column(String(100), nullable=False)
+    attempt_no: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="awaiting_review", nullable=False)
+    human_decision: Mapped[Optional[str]] = mapped_column(String(20))
+    observed_label: Mapped[Optional[str]] = mapped_column(String(100))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    test_results: Mapped[Optional[dict]] = mapped_column(JSONB, default=dict)
+    captured_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    reviewed_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("battery_unit_id", "step_id", "attempt_no", name="uq_battery_step_attempt"),
+        Index("ix_battery_evidence_unit_step", "battery_unit_id", "step_id"),
+        Index("ix_battery_evidence_factory_status", "factory_id", "status"),
+    )
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 

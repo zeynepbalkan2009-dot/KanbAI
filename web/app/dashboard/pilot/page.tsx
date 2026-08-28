@@ -26,7 +26,7 @@ import {
 const readinessItems = [
   { label: "Docker stack validated", detail: "API, web, nginx, Postgres, Redis, MinIO, workers and MLOps are up", done: true },
   { label: "Acceptance test passing", detail: "Login, seed, activation, upload, inference, HITL, export and HTTPS routes", done: true },
-  { label: "Operator capture ready", detail: "Tablet/laptop flow includes camera, fallback capture, GPS, battery and offline queue", done: true },
+  { label: "Operator capture ready", detail: "Tablet/laptop flow records identified devices and reports capture failures explicitly", done: true },
   { label: "Quality review ready", detail: "HITL queue supports approve, reject, wrong prediction and label correction", done: true },
   { label: "Real sample images", detail: "Collect 30-100 permission-safe images per defect family during pilot", done: false },
   { label: "Trusted tablet HTTPS", detail: "Use trusted cert/tunnel for separate-device camera trials", done: false },
@@ -47,9 +47,9 @@ const dataTargets = [
 ];
 
 const riskRegister = [
-  { risk: "Camera permission fails on tablet", mitigation: "Use trusted HTTPS or built-in demo fallback", severity: "Medium" },
+  { risk: "Camera permission fails on tablet", mitigation: "Stop capture, restore permission/HTTPS and repeat with the registered device", severity: "High" },
   { risk: "Factory images reveal sensitive info", mitigation: "Crop/censor before pitch or model sharing", severity: "High" },
-  { risk: "Mock inference challenged", mitigation: "Position demo as workflow-ready, model-ready architecture", severity: "Medium" },
+  { risk: "No validated product model", mitigation: "Use data_collection mode; human review is the only quality decision", severity: "High" },
   { risk: "Network unreliable on-site", mitigation: "Run local laptop demo and prepare short fallback recording", severity: "Medium" },
 ];
 

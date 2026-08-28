@@ -66,7 +66,7 @@ def _prepare_inference_image_path(inspection, image_path: str) -> tuple[str, str
     inspections are persisted in MinIO, so eligible modes download the object to
     a temporary worker file.
     """
-    if settings.ai_inference_mode not in {"mock", "yolo"}:
+    if settings.ai_inference_mode not in {"mock", "yolo", "pilot_yolo_scope"}:
         return image_path, None
 
     if image_path and Path(image_path).exists():
@@ -123,6 +123,30 @@ def _demo_failure_result():
     )
 
 
+def _apply_pilot_data_collection_policy(result):
+    """Prevent model output from becoming an automatic pilot quality decision."""
+    if not settings.pilot_mode:
+        return result
+
+    from app.domains.ai.inference_service import InferenceResult
+
+    raw_output = dict(result.raw_output or {})
+    raw_output.update({
+        "model_signal": result.decision,
+        "human_review_required": True,
+        "quality_decision_enabled": False,
+        "policy": "pilot_data_collection",
+    })
+    return InferenceResult(
+        decision="review",
+        confidence=result.confidence,
+        defects=result.defects,
+        latency_ms=result.latency_ms,
+        model_version=result.model_version,
+        raw_output=raw_output,
+    )
+
+
 @celery_app.task(
     bind=True,
     name="app.workers.tasks.inference_tasks.run_inspection",
@@ -143,7 +167,7 @@ def run_inspection(self: Task, inspection_id: str, image_path: str, tenant_id: s
     db = _get_sync_db_session()
     try:
         from app.infrastructure.database.models import InspectionResult
-        from app.domains.ai.inference_service import create_inference_service
+        from app.domains.ai.inference_service import get_inference_service
         inspection = db.query(InspectionResult).filter(InspectionResult.id == inspection_id).one_or_none()
 
         # Publish "processing" event immediately
@@ -157,11 +181,15 @@ def run_inspection(self: Task, inspection_id: str, image_path: str, tenant_id: s
         # Run inference (mock or real — same interface)
         serial = (getattr(inspection, "serial_number", None) or "").upper()
         lot = (getattr(inspection, "lot_number", None) or "").upper()
-        if serial.startswith("KANBAI-DEMO") or "FACTORY-PILOT" in lot:
+        if (
+            settings.demo_mode
+            and not settings.pilot_mode
+            and (serial.startswith("KANBAI-DEMO") or "FACTORY-PILOT" in lot)
+        ):
             time.sleep(1.2)
             result = _demo_failure_result()
         else:
-            service = create_inference_service()
+            service = get_inference_service()
             local_image_path, cleanup_path = _prepare_inference_image_path(inspection, image_path)
 
             # Run async inference in sync context
@@ -171,6 +199,10 @@ def run_inspection(self: Task, inspection_id: str, image_path: str, tenant_id: s
             finally:
                 loop.close()
                 _cleanup_temp_file(cleanup_path)
+
+        # Pilot mode is a data-collection workflow. Model output is evidence for
+        # the reviewer, never an automatic PASS/FAIL or scope disposition.
+        result = _apply_pilot_data_collection_policy(result)
 
         # Persist result
         db.execute(

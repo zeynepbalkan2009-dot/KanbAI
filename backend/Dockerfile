@@ -13,7 +13,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ARG REQUIREMENTS_FILE=requirements.txt
 COPY requirements*.txt ./
-RUN pip install -r ${REQUIREMENTS_FILE}
+RUN if [ "$REQUIREMENTS_FILE" = "requirements-yolo.txt" ]; then \
+      grep -v '^ultralytics==' "$REQUIREMENTS_FILE" > requirements-yolo-base.txt && \
+      pip install -r requirements-yolo-base.txt && \
+      pip install --no-deps ultralytics==8.2.27; \
+    else \
+      pip install -r ${REQUIREMENTS_FILE}; \
+    fi
 
 # ── Development ──────────────────────────────────
 FROM base AS development

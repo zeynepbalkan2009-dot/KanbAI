@@ -1,0 +1,38 @@
+dataset_id: battery_assembly_v0
+industry_domain: battery_assembly
+display_name: Batarya Montaj
+status: schema_ready
+images:
+  total: 0
+  train: 0
+  validation: 0
+  test: 0
+quality_decision_ready: false
+scope:
+  processes:
+    - cell_loading
+    - module_assembly
+    - busbar_and_weld
+    - connector_and_insulation
+    - final_visual_check
+  draft_defect_classes:
+    - missing_cell
+    - reversed_polarity
+    - connector_not_seated
+    - weld_anomaly
+    - insulation_damage
+    - foreign_object
+    - assembly_misalignment
+capture_requirements:
+  fixed_camera: true
+  fixed_lighting: true
+  product_revision_required: true
+  operation_stage_required: true
+  safety_review_required: true
+acceptance_gate:
+  factory_label_review_required: true
+  train_val_test_split_required: true
+  per_class_minimum_not_yet_defined: true
+notes:
+  - Draft ontology; battery process and quality engineers must approve labels.
+  - Electrical safety and internal cell quality cannot be inferred from RGB images alone.

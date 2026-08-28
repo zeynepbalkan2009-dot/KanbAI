@@ -186,6 +186,8 @@ async def get_review_queue(
     db: AsyncSession = Depends(get_db),
 ):
     """Get pending review items for the operator."""
+    if settings.pilot_mode:
+        raise HTTPException(410, "Legacy MLOps review queue is disabled in pilot mode. Use /api/v1/hitl/queue.")
     try:
         import sys
         from pathlib import Path
@@ -211,6 +213,8 @@ async def submit_review(
     db: AsyncSession = Depends(get_db),
 ):
     """Operator submits review decision."""
+    if settings.pilot_mode:
+        raise HTTPException(410, "Legacy MLOps review writes are disabled in pilot mode. Use /api/v1/hitl/{inspection_id}/review.")
     try:
         from mlops.hitl.review_pipeline import ReviewQueueService, ReviewAction
 
@@ -234,6 +238,8 @@ async def get_hitl_stats(
     current: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if settings.pilot_mode:
+        raise HTTPException(410, "Legacy MLOps HITL stats are disabled in pilot mode. Use /api/v1/hitl/stats.")
     try:
         from mlops.hitl.review_pipeline import ReviewQueueService
         svc = ReviewQueueService(db, current.tenant_id)

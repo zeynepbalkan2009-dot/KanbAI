@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/store/auth";
 import {
-  LayoutDashboard, Activity, LogOut,
+  LayoutDashboard, Activity, LogOut, SlidersHorizontal, BatteryCharging,
   Wifi, WifiOff, ChevronRight, Brain, ClipboardCheck, Building2, TabletSmartphone, Map, Target,
 } from "lucide-react";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -17,6 +17,8 @@ const NAV = [
   { href: "/dashboard/pilot", label: "Pilot Akisi", icon: Target },
   { href: "/dashboard/factory", label: "Fabrika Gorunumu", icon: Map },
   { href: "/dashboard/devices", label: "Telefon ve Cihazlar", icon: TabletSmartphone },
+  { href: "/dashboard/profiles", label: "Kontrol Profilleri", icon: SlidersHorizontal },
+  { href: "/dashboard/battery", label: "Batarya Izlenebilirlik", icon: BatteryCharging },
   { href: "/dashboard/inspections", label: "Muayene Kayitlari", icon: Activity },
   { href: "/dashboard/hitl", label: "Inceleme Kuyrugu", icon: ClipboardCheck },
   { href: "/dashboard/mlops", label: "Model ve Veri", icon: Brain },
@@ -25,12 +27,11 @@ const NAV = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated, logout, login } = useAuthStore();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const handleWSEvent = useInspectionStore((s) => s.handleWSEvent);
   const fetchInspections = useInspectionStore((s) => s.fetchInspections);
   const fetchStats = useInspectionStore((s) => s.fetchStats);
   const [apiReady, setApiReady] = useState(false);
-  const [switchingPilot, setSwitchingPilot] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   useEffect(() => {
@@ -83,23 +84,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push("/login");
   };
 
-  const handlePilotSwitch = async () => {
-    setSwitchingPilot(true);
-    try {
-      try {
-        await login("pilot@factory.local", "PilotFactory2026!");
-      } catch {
-        await login(`pilot@${"germak" + "san"}.com.tr`, `${"Germak" + "san"}Pilot2026!`);
-      }
-      toast.success("Pilot fabrika hesabina gecildi");
-      router.push("/dashboard");
-    } catch {
-      toast.error("Pilot hesabina gecilemedi");
-    } finally {
-      setSwitchingPilot(false);
-    }
-  };
-
   const enableNotifications = async () => {
     if (typeof window === "undefined" || !("Notification" in window)) {
       toast.error("Bu tarayici bildirim desteklemiyor");
@@ -113,8 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthenticated) return null;
 
   const systemOnline = connected || apiReady;
-  const isPilotAccount = user?.email?.toLowerCase() === "pilot@factory.local" || user?.email?.toLowerCase() === `pilot@${"germak" + "san"}.com.tr`;
-  const factoryName = isPilotAccount ? "Pilot Fabrika" : "KanbAI Factory";
+  const factoryName = "Factory workspace";
   const connectionLabel = connected
     ? "Canli veri aktif"
     : apiReady
@@ -149,15 +132,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <p className="mt-2 truncate text-sm font-medium text-[#0b1020]">{factoryName}</p>
             <p className="mt-1 truncate text-xs text-slate-500">{user?.full_name} / {user?.role}</p>
-            {!isPilotAccount && (
-              <button
-                onClick={handlePilotSwitch}
-                disabled={switchingPilot}
-                className="mt-3 w-full rounded-lg bg-[#FF7A00] px-3 py-2 text-xs font-semibold text-black transition hover:bg-[#ff8f24] disabled:opacity-60"
-              >
-                Pilot fabrika hesabina gec
-              </button>
-            )}
           </div>
         </div>
 

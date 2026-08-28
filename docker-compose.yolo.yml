@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
       target: development
       args:
-        REQUIREMENTS_FILE: requirements.txt
+        REQUIREMENTS_FILE: requirements-yolo.txt
     volumes:
       - ./backend:/app
       - ./mlops:/app/mlops

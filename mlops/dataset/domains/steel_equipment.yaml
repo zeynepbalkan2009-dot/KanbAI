@@ -1,0 +1,36 @@
+dataset_id: steel_equipment_v0
+industry_domain: steel_equipment
+display_name: Celikhane ve Haddehane Ekipmani
+status: schema_ready
+images:
+  total: 0
+  train: 0
+  validation: 0
+  test: 0
+quality_decision_ready: false
+scope:
+  processes:
+    - engineering_verification
+    - machining_output
+    - welded_fabrication
+    - equipment_assembly
+  draft_defect_classes:
+    - missing_component
+    - assembly_misalignment
+    - weld_anomaly
+    - machining_burr
+    - surface_crack
+    - edge_damage
+capture_requirements:
+  fixed_camera: true
+  fixed_lighting: true
+  product_revision_required: true
+  operation_stage_required: true
+  scale_reference_for_measurement: true
+acceptance_gate:
+  factory_label_review_required: true
+  train_val_test_split_required: true
+  per_class_minimum_not_yet_defined: true
+notes:
+  - Draft ontology; factory quality engineer must approve labels.
+  - Dimensional tolerance claims require calibrated vision, not YOLO alone.

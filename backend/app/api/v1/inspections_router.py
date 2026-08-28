@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, Header, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import Response, StreamingResponse
 import csv
 import io
@@ -10,9 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.domains.auth.service import get_current_user, CurrentUser
-from app.domains.inspection.service import (
-    InspectionService, InspectionOut, InspectionStats, ReviewRequest,
-)
+from app.domains.inspection.service import InspectionService, InspectionOut, InspectionStats
 from app.infrastructure.database.session import get_db
 from app.infrastructure.storage.minio_client import get_minio_client
 
@@ -136,17 +134,16 @@ async def get_inspection_image(
     return Response(content=data, media_type=media_type)
 
 
-@router.patch("/{inspection_id}/review", response_model=InspectionOut)
+@router.patch("/{inspection_id}/review", deprecated=True)
 async def review_inspection(
     inspection_id: str,
-    body: ReviewRequest,
-    svc: InspectionService = Depends(_svc),
+    current: CurrentUser = Depends(get_current_user),
 ):
-    """Operator manual override."""
-    if body.operator_decision not in ("pass", "fail"):
-        from app.core.exceptions import ValidationError
-        raise ValidationError("operator_decision must be 'pass' or 'fail'")
-    inspection = await svc.review_inspection(
-        inspection_id, body.operator_decision, body.notes
+    """Deprecated: every human decision must use the canonical HITL route."""
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "Direct inspection overrides are disabled. Submit the decision to "
+            f"/api/v1/hitl/{inspection_id}/review so the audit and dataset records stay synchronized."
+        ),
     )
-    return svc.add_presigned_url(inspection)

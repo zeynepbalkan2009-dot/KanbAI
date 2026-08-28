@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -47,6 +47,19 @@ class ProductCreate(BaseModel):
     is_active: bool = True
 
 
+class ProductInspectionProfileUpdate(BaseModel):
+    industry_domain: Literal["steel_equipment", "battery_assembly"]
+    operation_stage: str = Field(min_length=2, max_length=120)
+    inspection_mode: Literal["visual_defect", "assembly_presence", "dimensional_assist", "data_collection"]
+    capture_mode: Literal["conveyor", "fixed_station", "handheld"] = "fixed_station"
+    capture_strategy: Literal["manual", "stability_gated", "external_trigger", "continuous"] = "manual"
+    native_camera_required: bool = False
+    alignment_overlay_required: bool = True
+    defect_classes: list[str] = Field(default_factory=list, max_length=20)
+    human_review_required: bool = True
+    quality_decision_enabled: bool = False
+
+
 class ShiftCreate(BaseModel):
     name: str
     starts_at: str = Field(pattern=r"^\d{2}:\d{2}$")
@@ -66,7 +79,7 @@ class ResourceOut(BaseModel):
 
 
 def _as_out(item: Any) -> dict[str, Any]:
-    return {
+    payload = {
         "id": item.id,
         "factory_id": item.factory_id,
         "name": item.name,
@@ -75,6 +88,15 @@ def _as_out(item: Any) -> dict[str, Any]:
         "status": getattr(item, "status", None),
         "created_at": item.created_at,
     }
+    if isinstance(item, Product):
+        payload.update(
+            {
+                "revision": item.revision,
+                "defect_policy": item.defect_policy or {},
+                "is_active": item.is_active,
+            }
+        )
+    return payload
 
 
 async def _list(model: Any, current: CurrentUser, db: AsyncSession, active_only: bool):
@@ -144,6 +166,46 @@ async def create_product(body: ProductCreate, current: CurrentUser = Depends(req
     db.add(item)
     await db.flush()
     return _as_out(item)
+
+
+@router.patch("/products/{product_id}/inspection-profile")
+async def update_product_inspection_profile(
+    product_id: uuid.UUID,
+    body: ProductInspectionProfileUpdate,
+    current: CurrentUser = Depends(require_role(*ADMIN_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    product = await db.get(Product, product_id)
+    if not product or str(product.factory_id) != current.tenant_id or product.deleted_at is not None:
+        raise NotFoundError("Product")
+
+    defect_classes = list(dict.fromkeys(label.strip().lower() for label in body.defect_classes if label.strip()))
+    if body.quality_decision_enabled and (
+        body.inspection_mode == "data_collection" or not defect_classes
+    ):
+        from app.core.exceptions import ValidationError
+        raise ValidationError(
+            "Quality decision requires a non-data-collection inspection mode and at least one defect class"
+        )
+
+    policy = dict(product.defect_policy or {})
+    policy.update(
+        {
+            "industry_domain": body.industry_domain,
+            "operation_stage": body.operation_stage.strip(),
+            "inspection_mode": body.inspection_mode,
+            "capture_mode": body.capture_mode,
+            "capture_strategy": body.capture_strategy,
+            "native_camera_required": body.native_camera_required,
+            "alignment_overlay_required": body.alignment_overlay_required,
+            "defect_classes": defect_classes,
+            "human_review_required": body.human_review_required,
+            "quality_decision_enabled": body.quality_decision_enabled,
+        }
+    )
+    product.defect_policy = policy
+    await db.flush()
+    return _as_out(product)
 
 
 @router.get("/shifts")

@@ -42,6 +42,9 @@ if ($envValues["PILOT_MODE"] -ne "true") { throw "Set PILOT_MODE=true before sta
 if ($envValues["DEMO_MODE"] -eq "true") { throw "Set DEMO_MODE=false before starting factory pilot." }
 if ($envValues["APP_ENV"] -ne "production") { throw "Set APP_ENV=production before starting factory pilot." }
 if ($envValues["DEBUG"] -eq "true") { throw "Set DEBUG=false before starting factory pilot." }
+if ($envValues["AI_INFERENCE_MODE"] -eq "mock") {
+  throw "AI_INFERENCE_MODE=mock is not allowed in a factory pilot. Use data_collection without a validated model, or pilot_yolo_scope with local weights."
+}
 
 $composeFiles = @("docker-compose.yml", "docker-compose.https.yml", "docker-compose.pilot.yml")
 
@@ -55,6 +58,8 @@ if ($Yolo) {
     throw "Set AI_INFERENCE_MODE=yolo or AI_INFERENCE_MODE=pilot_yolo_scope in .env before starting with -Yolo."
   }
   $composeFiles += "docker-compose.yolo.yml"
+} elseif ($envValues["AI_INFERENCE_MODE"] -ne "data_collection") {
+  throw "Start without -Yolo only when AI_INFERENCE_MODE=data_collection. This mode records images for HITL without generating fake model decisions."
 }
 
 & .\scripts\create-local-https-cert.ps1 -ProjectRoot $ProjectRoot -IpAddress $IpAddress
@@ -69,6 +74,16 @@ if ($Build) { $composeArgs += "--build" }
 docker @composeArgs
 if ($LASTEXITCODE -ne 0) {
   throw "Docker Compose failed. Make sure Docker Desktop is running with the Linux engine, then run this script again."
+}
+
+$restartArgs = @("compose")
+foreach ($file in $composeFiles) {
+  $restartArgs += @("-f", $file)
+}
+$restartArgs += @("restart", "nginx")
+docker @restartArgs
+if ($LASTEXITCODE -ne 0) {
+  throw "Nginx restart failed after Compose startup."
 }
 
 Write-Host ""

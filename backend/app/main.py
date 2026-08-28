@@ -11,7 +11,7 @@ from app.core.config import get_settings
 from app.core.logging import setup_logging, get_logger
 from app.core.exceptions import AppError
 from app.infrastructure.database.session import engine, Base
-from app.api.v1 import auth_router, inspections_router, devices_router, ws_router, mlops_router, setup_router, hitl_router
+from app.api.v1 import auth_router, inspections_router, devices_router, ws_router, mlops_router, setup_router, hitl_router, battery_router
 
 setup_logging()
 logger = get_logger(__name__)
@@ -249,6 +249,7 @@ app.include_router(devices_router.router, prefix="/api/v1")
 app.include_router(mlops_router.router, prefix="/api/v1")
 app.include_router(setup_router.router, prefix="/api/v1")
 app.include_router(hitl_router.router, prefix="/api/v1")
+app.include_router(battery_router.router, prefix="/api/v1")
 app.include_router(ws_router.router)
 
 

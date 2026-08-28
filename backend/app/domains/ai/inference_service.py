@@ -300,6 +300,29 @@ class MockInferenceService:
         )
 
 
+class DataCollectionInferenceService:
+    """Pilot-safe mode that stores images without inventing model evidence."""
+
+    VERSION = "data-collection-v1"
+
+    def get_model_version(self) -> str:
+        return self.VERSION
+
+    async def analyze(self, image_path: str) -> InferenceResult:
+        return InferenceResult(
+            decision="review",
+            confidence=None,
+            defects=[],
+            latency_ms=0,
+            model_version=self.VERSION,
+            raw_output={
+                "human_review_required": True,
+                "quality_decision_enabled": False,
+                "model_executed": False,
+            },
+        )
+
+
 # ── YOLO implementation (stub — ready to activate) ───────────────────────────
 
 class YOLOInferenceService:
@@ -382,14 +405,62 @@ class YOLOInferenceService:
 
 # ── Factory function ──────────────────────────────────────────────────────────
 
+class PilotScopedYOLOInferenceService:
+    """
+    Reject unrelated images first, then use the local YOLO model as pilot
+    evidence. Until a factory-approved defect model exists, every in-scope
+    image is routed to human review instead of producing an automatic quality
+    PASS/FAIL decision.
+    """
+
+    def __init__(self, model_path: str):
+        self._yolo = YOLOInferenceService(model_path)
+
+    def get_model_version(self) -> str:
+        return f"pilot-scope+{self._yolo.get_model_version()}"
+
+    async def analyze(self, image_path: str) -> InferenceResult:
+        start = time.monotonic()
+        is_candidate, scope_metrics = MockInferenceService._is_industrial_metal_candidate(image_path)
+        if not is_candidate:
+            return InferenceResult(
+                decision="out_of_scope",
+                confidence=None,
+                defects=[],
+                latency_ms=int((time.monotonic() - start) * 1000),
+                model_version=self.get_model_version(),
+                raw_output={"scope_gate": scope_metrics},
+            )
+
+        yolo_result = await self._yolo.analyze(image_path)
+        return InferenceResult(
+            decision="review",
+            confidence=yolo_result.confidence,
+            defects=[],
+            latency_ms=int((time.monotonic() - start) * 1000),
+            model_version=self.get_model_version(),
+            raw_output={
+                "scope_gate": scope_metrics,
+                "scope_detections": [d.__dict__ for d in yolo_result.defects],
+                "human_review_required": True,
+            },
+        )
+
+
 def create_inference_service() -> InferenceService:
     mode = settings.ai_inference_mode
     if mode == "mock":
         logger.info("inference_mode", mode="mock")
         return MockInferenceService()
+    elif mode == "data_collection":
+        logger.info("inference_mode", mode="data_collection")
+        return DataCollectionInferenceService()
     elif mode == "yolo":
         logger.info("inference_mode", mode="yolo", path=settings.yolo_model_path)
         return YOLOInferenceService(settings.yolo_model_path)
+    elif mode == "pilot_yolo_scope":
+        logger.info("inference_mode", mode="pilot_yolo_scope", path=settings.yolo_model_path)
+        return PilotScopedYOLOInferenceService(settings.yolo_model_path)
     elif mode == "onnx":
         raise NotImplementedError("ONNX inference not yet implemented")
     else:

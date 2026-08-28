@@ -85,7 +85,7 @@ export default function CaptureHandoffPage() {
               {[
                 ["1", "Telefon fotografi AI kuyruguna gonderir."],
                 ["2", "Muayene Kayitlari yeni sonucu gosterir."],
-                ["3", "REVIEW veya FAIL sonuc Inceleme Kuyrugu'na duser."],
+                ["3", "Pilot modunda her kayit insan Inceleme Kuyrugu'na duser."],
                 ["4", "Kalite sorumlusu onaylar, reddeder veya etiketi duzeltir."],
               ].map(([step, text]) => (
                 <div key={step} className="flex gap-3 rounded-xl bg-black/20 p-3">

@@ -1,4 +1,4 @@
-const CACHE_NAME = "kanbai-demo-v1";
+const CACHE_NAME = "kanbai-pilot-v2";
 const APP_SHELL = [
   "/",
   "/login",
@@ -41,6 +41,9 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => undefined);
         return response;
       })
-      .catch(() => caches.match(request).then((cached) => cached || caches.match("/dashboard/capture")))
+      .catch(() => caches.match(request).then((cached) => cached || new Response(
+        "KanbAI is offline. Capture was not submitted; reconnect before continuing.",
+        { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } }
+      )))
   );
 });

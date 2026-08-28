@@ -17,7 +17,8 @@ type Evidence = {
 type BatteryUnit = {
   id: string; product_id: string; production_line_id?: string | null; serial_number: string;
   barcode?: string | null; cell_type: "prismatic" | "cylindrical" | "pouch";
-  status: string; current_step: number; created_at: string; steps?: Evidence[];
+  status: string; current_step: number; expected_cell_count: number; created_at: string; steps?: Evidence[];
+  cells?: Array<{ id: string; cell_identifier: string; position_code: string; declared_cell_type: string; detected_cell_type?: string | null; verification_status: string }>;
 };
 type Product = { id: string; sku: string; name: string; revision?: string; defect_policy?: { industry_domain?: string } };
 type Resource = { id: string; code?: string; name: string };
@@ -42,6 +43,7 @@ export default function BatteryWorkflowPage() {
   const [serial, setSerial] = useState("");
   const [barcode, setBarcode] = useState("");
   const [cellType, setCellType] = useState<"prismatic" | "cylindrical" | "pouch">("prismatic");
+  const [expectedCellCount, setExpectedCellCount] = useState("1");
   const [productId, setProductId] = useState("");
   const [lineId, setLineId] = useState("");
   const [stationId, setStationId] = useState("");
@@ -49,6 +51,9 @@ export default function BatteryWorkflowPage() {
   const [observedLabel, setObservedLabel] = useState("");
   const [notes, setNotes] = useState("");
   const [eol, setEol] = useState(emptyEol);
+  const [cellIdentifier, setCellIdentifier] = useState("");
+  const [cellPosition, setCellPosition] = useState("");
+  const [cellMismatchReason, setCellMismatchReason] = useState("");
 
   const batteryProducts = useMemo(
     () => products.filter((item) => item.defect_policy?.industry_domain === "battery_assembly"),
@@ -96,6 +101,7 @@ export default function BatteryWorkflowPage() {
       const response = await batteryApi.createUnit({
         product_id: productId, production_line_id: lineId || undefined,
         serial_number: serial.trim(), barcode: barcode.trim() || undefined, cell_type: cellType,
+        expected_cell_count: Number(expectedCellCount),
       });
       toast.success("Batarya izlenebilirlik kaydi olusturuldu");
       setSerial(""); setBarcode("");
@@ -104,6 +110,32 @@ export default function BatteryWorkflowPage() {
     } catch (error: any) {
       toast.error(error?.response?.data?.detail ?? "Kayit olusturulamadi");
     } finally { setSaving(false); }
+  };
+
+  const registerCell = async () => {
+    if (!selected || !cellIdentifier.trim() || !cellPosition.trim()) return toast.error("Hucre barkodu ve pozisyonu gerekli");
+    setSaving(true);
+    try {
+      await batteryApi.registerCell(selected.id, {
+        cell_identifier: cellIdentifier.trim(), position_code: cellPosition.trim(), declared_cell_type: selected.cell_type,
+      });
+      setCellIdentifier(""); setCellPosition("");
+      toast.success("Hucre insan dogrulamasina kaydedildi");
+      await loadDetail(selected.id);
+    } catch (error: any) { toast.error(error?.response?.data?.detail ?? "Hucre kaydedilemedi"); }
+    finally { setSaving(false); }
+  };
+
+  const verifyCell = async (cellId: string, decision: "match" | "mismatch") => {
+    if (decision === "mismatch" && !cellMismatchReason.trim()) return toast.error("Uyusmazlik nedeni gerekli");
+    setSaving(true);
+    try {
+      await batteryApi.verifyCell(cellId, { decision, mismatch_reason: decision === "mismatch" ? cellMismatchReason.trim() : undefined });
+      setCellMismatchReason("");
+      toast.success("Hucre dogrulamasi kaydedildi");
+      if (selected) await loadDetail(selected.id);
+    } catch (error: any) { toast.error(error?.response?.data?.detail ?? "Dogrulama kaydedilemedi"); }
+    finally { setSaving(false); }
   };
 
   const addEvidence = async () => {
@@ -161,11 +193,12 @@ export default function BatteryWorkflowPage() {
 
         <section className="rounded-2xl border bg-white p-5 shadow-sm">
           <h2 className="mb-4 flex items-center gap-2 font-semibold"><Plus size={18}/> Yeni batarya kaydi</h2>
-          <div className="grid gap-3 md:grid-cols-5">
+          <div className="grid gap-3 md:grid-cols-6">
             <select value={productId} onChange={(e)=>setProductId(e.target.value)} className="rounded-lg border px-3 py-2"><option value="">Batarya urunu</option>{batteryProducts.map(p=><option key={p.id} value={p.id}>{p.sku} - {p.name}</option>)}</select>
             <input value={serial} onChange={(e)=>setSerial(e.target.value)} placeholder="Seri numarasi" className="rounded-lg border px-3 py-2"/>
             <input value={barcode} onChange={(e)=>setBarcode(e.target.value)} placeholder="Barkod / QR referansi" className="rounded-lg border px-3 py-2"/>
             <select value={cellType} onChange={(e)=>setCellType(e.target.value as typeof cellType)} className="rounded-lg border px-3 py-2"><option value="prismatic">Prizmatik</option><option value="cylindrical">Silindirik</option><option value="pouch">Pouch</option></select>
+            <input type="number" min="1" max="10000" value={expectedCellCount} onChange={(e)=>setExpectedCellCount(e.target.value)} placeholder="Hucre adedi" className="rounded-lg border px-3 py-2"/>
             <select value={lineId} onChange={(e)=>setLineId(e.target.value)} className="rounded-lg border px-3 py-2"><option value="">Uretim hatti</option>{lines.map(l=><option key={l.id} value={l.id}>{l.code} - {l.name}</option>)}</select>
           </div>
           <button disabled={saving} onClick={createUnit} className="mt-4 rounded-lg bg-[#FF7A00] px-5 py-2 text-sm font-semibold text-black disabled:opacity-50">Kaydi olustur</button>
@@ -181,6 +214,14 @@ export default function BatteryWorkflowPage() {
             {!selected ? <div className="py-20 text-center text-slate-400"><BatteryCharging className="mx-auto mb-3"/>Bir batarya kaydi secin</div> : <>
               <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-mono text-lg font-semibold">{selected.serial_number}</p><p className="text-sm text-slate-500">{selected.barcode || "Barkod yok"} · {selected.cell_type}</p></div><span className={`rounded-full border px-3 py-1 text-xs ${statusTone(selected.status)}`}>{selected.status}</span></div>
               <div className="mt-5 grid gap-2 sm:grid-cols-6">{steps.map(step=>{const evidence=selected.steps?.filter(e=>e.step_id===step.step_id).at(-1); const active=selected.current_step===step.step_id; return <div key={step.step_id} className={`rounded-xl border p-3 ${active?"border-sky-400 bg-sky-50":""}`}>{evidence?.status==="accepted"?<CheckCircle2 className="text-emerald-600" size={18}/>:evidence?.status==="rejected"?<XCircle className="text-red-600" size={18}/>:<CircleDashed className="text-slate-400" size={18}/>}<p className="mt-2 text-xs font-semibold">{step.step_id}. {step.name}</p><p className="mt-1 text-[11px] text-slate-500">{evidence?.status || (active?"kanit bekleniyor":"sirada")}</p></div>})}</div>
+
+              {selected.current_step === 1 && <div className="mt-6 rounded-xl border border-sky-200 bg-sky-50 p-4">
+                <h3 className="font-semibold text-sky-900">Incoming hucre kimligi ({selected.cells?.length ?? 0}/{selected.expected_cell_count})</h3>
+                <p className="mt-1 text-xs text-sky-700">Barkod, fiziksel pozisyon ve tip insan tarafindan dogrulanmadan 1. asama PASS olamaz.</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]"><input value={cellIdentifier} onChange={e=>setCellIdentifier(e.target.value)} placeholder="Hucre barkod / QR" className="rounded-lg border bg-white px-3 py-2"/><input value={cellPosition} onChange={e=>setCellPosition(e.target.value)} placeholder="Pozisyon (orn. M1-C01)" className="rounded-lg border bg-white px-3 py-2"/><button disabled={saving} onClick={registerCell} className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white">Hucre ekle</button></div>
+                <input value={cellMismatchReason} onChange={e=>setCellMismatchReason(e.target.value)} placeholder="Uyusmazlik nedeni (mismatch icin)" className="mt-2 w-full rounded-lg border bg-white px-3 py-2"/>
+                <div className="mt-3 space-y-2">{selected.cells?.map(cell=><div key={cell.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white p-3 text-sm"><div><b>{cell.position_code}</b> · {cell.cell_identifier}<p className="text-xs text-slate-500">Beyan: {cell.declared_cell_type} · {cell.verification_status}</p></div>{cell.verification_status==="awaiting_human"&&<div className="flex gap-2"><button onClick={()=>verifyCell(cell.id,"match")} className="rounded bg-emerald-600 px-3 py-1 text-xs font-semibold text-white">Eslesiyor</button><button onClick={()=>verifyCell(cell.id,"mismatch")} className="rounded bg-red-600 px-3 py-1 text-xs font-semibold text-white">Uyusmuyor</button></div>}</div>)}</div>
+              </div>}
 
               {selected.status !== "completed" && currentDefinition && <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="flex items-center gap-2 font-semibold"><ClipboardCheck size={18}/>{currentDefinition.name}</h3>

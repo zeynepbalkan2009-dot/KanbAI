@@ -302,6 +302,7 @@ class BatteryUnit(Base):
     serial_number: Mapped[str] = mapped_column(String(120), nullable=False)
     barcode: Mapped[Optional[str]] = mapped_column(String(255))
     cell_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    expected_cell_count: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(30), default="in_progress", nullable=False)
     current_step: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     metadata_json: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, default=dict)
@@ -341,6 +342,34 @@ class BatteryStepEvidence(Base):
         UniqueConstraint("battery_unit_id", "step_id", "attempt_no", name="uq_battery_step_attempt"),
         Index("ix_battery_evidence_unit_step", "battery_unit_id", "step_id"),
         Index("ix_battery_evidence_factory_status", "factory_id", "status"),
+    )
+
+
+class BatteryCellComponent(Base):
+    """Traceable incoming cell assigned to a physical position in a battery unit."""
+
+    __tablename__ = "battery_cell_components"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    factory_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("factories.id"), nullable=False)
+    battery_unit_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("battery_units.id"), nullable=False)
+    inspection_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("inspection_results.id"))
+    cell_identifier: Mapped[str] = mapped_column(String(255), nullable=False)
+    position_code: Mapped[str] = mapped_column(String(80), nullable=False)
+    declared_cell_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    detected_cell_type: Mapped[Optional[str]] = mapped_column(String(20))
+    model_confidence: Mapped[Optional[float]] = mapped_column(Float)
+    verification_status: Mapped[str] = mapped_column(String(30), default="awaiting_human", nullable=False)
+    human_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    mismatch_reason: Mapped[Optional[str]] = mapped_column(Text)
+    registered_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    verified_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("factory_id", "cell_identifier", name="uq_battery_cell_factory_identifier"),
+        UniqueConstraint("battery_unit_id", "position_code", name="uq_battery_cell_unit_position"),
+        Index("ix_battery_cells_unit_status", "battery_unit_id", "verification_status"),
     )
 
 

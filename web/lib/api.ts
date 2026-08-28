@@ -219,6 +219,7 @@ export const batteryApi = {
     serial_number: string;
     barcode?: string;
     cell_type: "prismatic" | "cylindrical" | "pouch";
+    expected_cell_count: number;
     metadata?: Record<string, unknown>;
   }) => api.post("/battery/units", data),
   addEvidence: (unitId: string, stepId: number, data: {
@@ -233,4 +234,14 @@ export const batteryApi = {
     observed_label: string;
     notes?: string;
   }) => api.post(`/battery/evidence/${evidenceId}/review`, data),
+  registerCell: (unitId: string, data: {
+    cell_identifier: string;
+    position_code: string;
+    declared_cell_type: "prismatic" | "cylindrical" | "pouch";
+    inspection_id?: string;
+    detected_cell_type?: "prismatic" | "cylindrical" | "pouch";
+    model_confidence?: number;
+  }) => api.post(`/battery/units/${unitId}/cells`, data),
+  verifyCell: (cellId: string, data: { decision: "match" | "mismatch"; mismatch_reason?: string }) =>
+    api.post(`/battery/cells/${cellId}/verify`, data),
 };

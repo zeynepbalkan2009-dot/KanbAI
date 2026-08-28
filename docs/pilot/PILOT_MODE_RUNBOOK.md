@@ -47,6 +47,22 @@ docker compose @pilotCompose exec -it api python scripts/bootstrap_pilot_admin.p
 The command prompts for a password. Do not pass `--password` into a shared
 shell history except in a controlled automation environment.
 
+### Configure an existing battery pilot product
+
+After creating the factory product and production line, apply the safe,
+idempotent six-stage battery workflow configuration:
+
+```powershell
+docker compose @pilotCompose exec -T -e PYTHONPATH=/app api python scripts/configure_battery_pilot.py `
+  --factory-slug kanbai-battery-pilot `
+  --product-sku BAT-PILOT-001 `
+  --line-code BAT-LINE-1
+```
+
+This command creates no inspections, labels, users, or battery units. It keeps
+automatic quality decisions disabled and creates or updates only the six
+canonical workflow stations.
+
 ## Non-destructive verification
 
 After the administrator has logged in once, run:
@@ -65,8 +81,8 @@ review inspection data.
 ## Go/no-go before line use
 
 - Verify the API log contains `demo_seed_skipped_for_pilot_mode`.
-- Record the active model mode. Use `mock` only for workflow rehearsal; do not
-  make quality claims from it.
+- Record the active model mode. Use `data_collection` when no validated product
+  model exists; factory startup rejects `mock` mode.
 - For YOLO mode, validate the exact approved model artifact with factory images
   and record precision, recall, latency, false positives, and false negatives.
 - Test a tablet camera over the trusted HTTPS URL on the target factory network.

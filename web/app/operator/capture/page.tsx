@@ -30,6 +30,9 @@ type Station = {
   id: string;
   code: string;
   name: string;
+  production_line_id?: string | null;
+  station_type?: string | null;
+  metadata?: { workflow?: string; workflow_step?: number };
 };
 
 type Product = {
@@ -61,6 +64,7 @@ type InspectionResult = {
 type BatteryUnit = {
   id: string;
   product_id: string;
+  production_line_id?: string | null;
   serial_number: string;
   barcode?: string | null;
   status: string;
@@ -105,6 +109,7 @@ export default function OperatorCapturePage() {
   const [loadingSetup, setLoadingSetup] = useState(false);
   const [device, setDevice] = useState<Device | null>(null);
   const [station, setStation] = useState<Station | null>(null);
+  const [stations, setStations] = useState<Station[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [product, setProduct] = useState<Product | null>(null);
   const [batteryUnits, setBatteryUnits] = useState<BatteryUnit[]>([]);
@@ -203,6 +208,7 @@ export default function OperatorCapturePage() {
       const selectedProduct =
         availableProducts.find((item) => item.sku?.toUpperCase().includes("PILOT")) ?? availableProducts[0] ?? null;
       setStation(selectedStation);
+      setStations(stations);
       setProducts(availableProducts);
       setProduct(selectedProduct);
       setBatteryUnits(batteryUnitsResponse.data as BatteryUnit[]);
@@ -258,6 +264,21 @@ export default function OperatorCapturePage() {
   }, [batteryUnits, product?.id, product?.defect_policy?.industry_domain]);
 
   useEffect(() => {
+    if (!batteryUnit) {
+      if (product?.defect_policy?.industry_domain !== "battery_assembly") {
+        setStation(stations.find((item) => !item.metadata?.workflow) ?? stations[0] ?? null);
+      }
+      return;
+    }
+    const workflowStation = stations.find((item) =>
+      item.metadata?.workflow === "battery_assembly_v1"
+      && item.metadata?.workflow_step === batteryUnit.current_step
+      && (!batteryUnit.production_line_id || item.production_line_id === batteryUnit.production_line_id)
+    ) ?? null;
+    setStation(workflowStation);
+  }, [batteryUnit?.id, batteryUnit?.current_step, batteryUnit?.production_line_id, product?.defect_policy?.industry_domain, stations]);
+
+  useEffect(() => {
     loadOrRegisterDevice().catch(() => undefined);
   }, [loadOrRegisterDevice]);
 
@@ -293,6 +314,10 @@ export default function OperatorCapturePage() {
     }
     if (batteryUnit?.current_step === 6) {
       toast.error("EOL asamasi fotografla kapatilamaz; olcum verilerini Batarya Izlenebilirlik ekranina girin");
+      return;
+    }
+    if (batteryUnit && station?.metadata?.workflow_step !== batteryUnit.current_step) {
+      toast.error(`Batarya adim ${batteryUnit.current_step} icin tanimli istasyon bulunamadi`);
       return;
     }
 
@@ -504,6 +529,7 @@ export default function OperatorCapturePage() {
                           : `Bu fotograf otomatik olarak adim ${batteryUnit.current_step} kanitina baglanacak; kalite karari insan tarafindan verilecek.`
                         : "Fotograf gondermeden once seri numarali batarya kaydi zorunludur."}
                     </p>
+                    {batteryUnit && batteryUnit.current_step <= 5 && <p className={`mt-1 text-[11px] font-semibold ${station ? "text-emerald-300" : "text-red-300"}`}>Istasyon: {station ? `${station.code} - ${station.name}` : `Adim ${batteryUnit.current_step} icin eslesen istasyon yok`}</p>}
                   </label>
                 )}
               </div>

@@ -96,6 +96,14 @@ def _as_out(item: Any) -> dict[str, Any]:
                 "is_active": item.is_active,
             }
         )
+    if isinstance(item, Station):
+        payload.update(
+            {
+                "production_line_id": item.production_line_id,
+                "station_type": item.station_type,
+                "metadata": item.metadata_json or {},
+            }
+        )
     return payload
 
 

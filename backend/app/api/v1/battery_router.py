@@ -294,6 +294,11 @@ async def create_step_evidence(unit_id: uuid.UUID, step_id: int, body: StepEvide
     station = await db.get(Station, body.station_id)
     if not station or str(station.factory_id) != current.tenant_id:
         raise NotFoundError("Station")
+    station_metadata = station.metadata_json or {}
+    if station_metadata.get("workflow") != "battery_assembly_v1" or station_metadata.get("workflow_step") != step_id:
+        raise ValidationError(f"Selected station is not configured for battery workflow step {step_id}")
+    if unit.production_line_id and station.production_line_id != unit.production_line_id:
+        raise ValidationError("Selected station does not belong to the battery unit production line")
     if step_id <= 5 and not body.inspection_id:
         raise ValidationError("Visual workflow steps 1-5 require an inspection record")
     if body.inspection_id:

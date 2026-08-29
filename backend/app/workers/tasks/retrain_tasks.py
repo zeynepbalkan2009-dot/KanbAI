@@ -68,6 +68,14 @@ def register_retraining_tasks(celery_app):
         """
         logger.info(f"[retrain] check triggered by: {trigger}")
 
+        if os.environ.get("PILOT_MODE", "false").strip().lower() in {"1", "true", "yes", "on"}:
+            logger.warning("[retrain] disabled in pilot mode: collected labels require dataset QA and explicit approval")
+            return {
+                "skipped": True,
+                "reason": "pilot_data_collection_only",
+                "automatic_training_enabled": False,
+            }
+
         db = _get_db()
         try:
             # 1. Count unexported contributions

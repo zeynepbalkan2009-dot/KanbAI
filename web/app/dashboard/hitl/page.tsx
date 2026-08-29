@@ -38,6 +38,15 @@ type HitlStats = {
   dataset_contributions: number;
 };
 
+type DatasetSummary = {
+  schema_version: string;
+  training_ready: boolean;
+  automatic_training_enabled: boolean;
+  partitions: Array<{ partition: string; total: number; labels: Record<string, number> }>;
+  unpartitioned_legacy_records: number;
+  warning: string;
+};
+
 type InboxFilter = "all" | "pass" | "fail" | "review" | "out_of_scope";
 
 function DecisionBadge({ decision }: { decision: string }) {
@@ -98,6 +107,7 @@ function ageLabel(item?: QueueItem) {
 export default function HitlPage() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [stats, setStats] = useState<HitlStats | null>(null);
+  const [datasetSummary, setDatasetSummary] = useState<DatasetSummary | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [correctedLabel, setCorrectedLabel] = useState("good");
   const [notes, setNotes] = useState("Confirmed defect. Add to retraining dataset and monitor recurrence on Line 1.");
@@ -128,9 +138,10 @@ export default function HitlPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [queueRes, statsRes] = await Promise.all([hitlApi.queue(), hitlApi.stats()]);
+      const [queueRes, statsRes, datasetRes] = await Promise.all([hitlApi.queue(), hitlApi.stats(), hitlApi.datasetSummary()]);
       setQueue(queueRes.data);
       setStats(statsRes.data);
+      setDatasetSummary(datasetRes.data);
       setSelectedId((current) => current ?? queueRes.data[0]?.id ?? null);
     } finally {
       setLoading(false);
@@ -220,6 +231,19 @@ export default function HitlPage() {
           <Stat label="Closed reviews" value={stats?.completed_reviews ?? 0} icon={UserRoundCheck} tone="text-emerald-600" />
           <Stat label="Dataset records" value={stats?.dataset_contributions ?? 0} icon={Database} tone="text-sky-600" />
         </div>
+
+        <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-semibold">Dataset collection inventory · {datasetSummary?.schema_version ?? "loading"}</p>
+            <span className="rounded-full border border-amber-300 px-2.5 py-1 text-xs font-semibold">TRAINING NOT ENABLED</span>
+          </div>
+          <p className="mt-1 text-xs text-amber-800">{datasetSummary?.warning ?? "Dataset partitions are loading."}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {datasetSummary?.partitions.map((partition) => <span key={partition.partition} className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs"><b>{partition.partition}</b> · {partition.total} reviewed</span>)}
+            {datasetSummary && datasetSummary.partitions.length === 0 && <span className="text-xs">No partitioned human-reviewed records yet.</span>}
+            {(datasetSummary?.unpartitioned_legacy_records ?? 0) > 0 && <span className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700">Legacy/unpartitioned: {datasetSummary?.unpartitioned_legacy_records}</span>}
+          </div>
+        </section>
 
         <div className="grid gap-5 xl:grid-cols-[390px_minmax(0,1fr)_350px]">
           <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">

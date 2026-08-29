@@ -201,6 +201,7 @@ export const setupApi = {
 export const hitlApi = {
   queue: () => api.get("/hitl/queue"),
   stats: () => api.get("/hitl/stats"),
+  datasetSummary: () => api.get("/hitl/dataset-summary"),
   review: (id: string, data: {
     decision: "pass" | "fail" | "out_of_scope" | "wrong_prediction" | "needs_retrain";
     corrected_label?: string;

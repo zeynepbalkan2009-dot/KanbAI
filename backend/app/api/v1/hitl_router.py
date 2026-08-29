@@ -1,4 +1,6 @@
 import uuid
+import re
+from collections import Counter
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -43,6 +45,16 @@ def review_queue_decisions() -> list[str]:
     if settings.pilot_mode:
         return ["pass", "review", "fail", "out_of_scope"]
     return ["review", "fail"]
+
+
+def dataset_partition(context: dict) -> str:
+    domain = context.get("industry_domain") or "unconfigured"
+    if context.get("workflow_step_id"):
+        stage = f"step_{int(context['workflow_step_id']):02d}"
+    else:
+        raw_stage = str(context.get("operation_stage") or "unconfigured").strip().lower()
+        stage = re.sub(r"[^a-z0-9]+", "_", raw_stage).strip("_") or "unconfigured"
+    return f"{domain}/{stage}"
 
 
 def product_context(product: Optional[Product], battery_evidence: Optional[BatteryStepEvidence] = None) -> dict:
@@ -112,6 +124,33 @@ async def hitl_stats(current: CurrentUser = Depends(get_current_user), db: Async
     reviewed = await db.execute(select(func.count()).select_from(HITLReview).where(HITLReview.factory_id == uuid.UUID(current.tenant_id)))
     dataset = await db.execute(select(func.count()).select_from(DatasetContribution).where(DatasetContribution.factory_id == uuid.UUID(current.tenant_id)))
     return {"pending_reviews": pending.scalar() or 0, "completed_reviews": reviewed.scalar() or 0, "dataset_contributions": dataset.scalar() or 0}
+
+
+@router.get("/dataset-summary")
+async def dataset_summary(current: CurrentUser = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(DatasetContribution).where(DatasetContribution.factory_id == uuid.UUID(current.tenant_id))
+    )
+    partitions: dict[str, Counter] = {}
+    unpartitioned = 0
+    for contribution in result.scalars().all():
+        metadata = contribution.metadata_json or {}
+        partition = metadata.get("dataset_partition")
+        if not partition:
+            unpartitioned += 1
+            continue
+        partitions.setdefault(str(partition), Counter())[contribution.label] += 1
+    return {
+        "schema_version": "kanbai_dataset_v1",
+        "training_ready": False,
+        "automatic_training_enabled": False,
+        "partitions": [
+            {"partition": partition, "total": sum(labels.values()), "labels": dict(sorted(labels.items()))}
+            for partition, labels in sorted(partitions.items())
+        ],
+        "unpartitioned_legacy_records": unpartitioned,
+        "warning": "Human-reviewed records are collection inventory, not a trained or validated production model.",
+    }
 
 
 @router.get("/{inspection_id}")
@@ -194,6 +233,7 @@ async def review_hitl(inspection_id: str, body: HITLDecisionIn, current: Current
     if include_in_dataset:
         battery_unit = await db.get(BatteryUnit, battery_evidence.battery_unit_id) if battery_evidence else None
         metadata = {
+            "schema_version": "kanbai_dataset_v1",
             "decision": normalized,
             "product_id": context["product_id"],
             "sku": context["sku"],
@@ -207,6 +247,7 @@ async def review_hitl(inspection_id: str, body: HITLDecisionIn, current: Current
             "battery_workflow_step_name": battery_evidence.step_name if battery_evidence else None,
             "battery_evidence_id": str(battery_evidence.id) if battery_evidence else None,
         }
+        metadata["dataset_partition"] = dataset_partition({**context, **metadata})
         existing_dataset = await db.execute(select(DatasetContribution).where(DatasetContribution.inspection_id == inspection.id))
         contribution = existing_dataset.scalar_one_or_none()
         if contribution:

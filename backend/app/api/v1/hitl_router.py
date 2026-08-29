@@ -23,6 +23,14 @@ from app.infrastructure.database.session import get_db
 router = APIRouter(prefix="/hitl", tags=["human-in-the-loop"])
 settings = get_settings()
 
+BATTERY_STEP_DEFECT_CLASSES = {
+    1: ["wrong_cell_type", "barcode_mismatch", "missing_cell", "insulation_damage", "foreign_object"],
+    2: ["missing_cell", "reversed_polarity", "isolation_plate_missing", "assembly_misalignment", "foreign_object"],
+    3: ["weld_anomaly", "busbar_misalignment", "insulation_damage", "foreign_object"],
+    4: ["connector_not_seated", "harness_misroute", "insulation_damage", "foreign_object"],
+    5: ["assembly_misalignment", "gasket_damage", "insulation_damage", "foreign_object"],
+}
+
 
 class HITLDecisionIn(BaseModel):
     decision: str
@@ -37,9 +45,12 @@ def review_queue_decisions() -> list[str]:
     return ["review", "fail"]
 
 
-def product_context(product: Optional[Product]) -> dict:
+def product_context(product: Optional[Product], battery_evidence: Optional[BatteryStepEvidence] = None) -> dict:
     policy = dict(product.defect_policy or {}) if product else {}
     defect_classes = [str(item).strip() for item in policy.get("defect_classes", []) if str(item).strip()]
+    if battery_evidence and battery_evidence.step_id in BATTERY_STEP_DEFECT_CLASSES:
+        stage_labels = BATTERY_STEP_DEFECT_CLASSES[battery_evidence.step_id]
+        defect_classes = [label for label in stage_labels if label in defect_classes]
     return {
         "product_id": str(product.id) if product else None,
         "sku": product.sku if product else None,
@@ -47,6 +58,8 @@ def product_context(product: Optional[Product]) -> dict:
         "revision": product.revision if product else None,
         "industry_domain": policy.get("industry_domain"),
         "operation_stage": policy.get("operation_stage"),
+        "workflow_step_id": battery_evidence.step_id if battery_evidence else None,
+        "workflow_step_name": battery_evidence.step_name if battery_evidence else None,
         "defect_classes": defect_classes,
         "allowed_labels": ["good", *defect_classes, "unclassified_defect", "out_of_scope"],
     }
@@ -67,6 +80,17 @@ async def hitl_queue(limit: int = Query(50, le=200), current: CurrentUser = Depe
         .limit(limit)
     )
     result = await db.execute(q)
+    rows = result.all()
+    inspection_ids = [inspection.id for inspection, _ in rows]
+    evidence_by_inspection: dict[uuid.UUID, BatteryStepEvidence] = {}
+    if inspection_ids:
+        evidence_result = await db.execute(
+            select(BatteryStepEvidence)
+            .where(BatteryStepEvidence.inspection_id.in_(inspection_ids))
+            .order_by(BatteryStepEvidence.created_at)
+        )
+        for evidence in evidence_result.scalars().all():
+            evidence_by_inspection[evidence.inspection_id] = evidence
     return [
         {
             "id": str(i.id),
@@ -76,9 +100,9 @@ async def hitl_queue(limit: int = Query(50, le=200), current: CurrentUser = Depe
             "defects": i.defects or [],
             "image_key": i.image_key,
             "created_at": i.created_at,
-            "product": product_context(product),
+            "product": product_context(product, evidence_by_inspection.get(i.id)),
         }
-        for i, product in result.all()
+        for i, product in rows
     ]
 
 
@@ -96,6 +120,12 @@ async def hitl_detail(inspection_id: str, current: CurrentUser = Depends(get_cur
     if not inspection or str(inspection.factory_id) != current.tenant_id:
         raise NotFoundError("Inspection")
     product = await db.get(Product, inspection.product_id) if inspection.product_id else None
+    battery_evidence = await db.scalar(
+        select(BatteryStepEvidence)
+        .where(BatteryStepEvidence.inspection_id == inspection.id)
+        .order_by(BatteryStepEvidence.created_at.desc())
+        .limit(1)
+    )
     return {
         "id": str(inspection.id),
         "decision": inspection.decision,
@@ -105,7 +135,7 @@ async def hitl_detail(inspection_id: str, current: CurrentUser = Depends(get_cur
         "operator_notes": inspection.operator_notes,
         "image_key": inspection.image_key,
         "created_at": inspection.created_at,
-        "product": product_context(product),
+        "product": product_context(product, battery_evidence),
     }
 
 
@@ -120,7 +150,13 @@ async def review_hitl(inspection_id: str, body: HITLDecisionIn, current: Current
         raise NotFoundError("Inspection")
 
     product = await db.get(Product, inspection.product_id) if inspection.product_id else None
-    context = product_context(product)
+    battery_evidence = await db.scalar(
+        select(BatteryStepEvidence)
+        .where(BatteryStepEvidence.inspection_id == inspection.id)
+        .order_by(BatteryStepEvidence.created_at.desc())
+        .limit(1)
+    )
+    context = product_context(product, battery_evidence)
     allowed_labels = set(context["allowed_labels"])
     if normalized == "pass":
         label = "good"
@@ -156,12 +192,6 @@ async def review_hitl(inspection_id: str, body: HITLDecisionIn, current: Current
 
     include_in_dataset = body.dataset_contribution or settings.pilot_mode
     if include_in_dataset:
-        battery_evidence = await db.scalar(
-            select(BatteryStepEvidence)
-            .where(BatteryStepEvidence.inspection_id == inspection.id)
-            .order_by(BatteryStepEvidence.created_at.desc())
-            .limit(1)
-        )
         battery_unit = await db.get(BatteryUnit, battery_evidence.battery_unit_id) if battery_evidence else None
         metadata = {
             "decision": normalized,

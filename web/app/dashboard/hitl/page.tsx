@@ -25,6 +25,8 @@ type QueueItem = {
     revision?: string | null;
     industry_domain?: "steel_equipment" | "battery_assembly" | null;
     operation_stage?: string | null;
+    workflow_step_id?: number | null;
+    workflow_step_name?: string | null;
     defect_classes: string[];
     allowed_labels: string[];
   };
@@ -373,6 +375,8 @@ export default function HitlPage() {
               <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
                 <p><b>Domain:</b> {selected?.product?.industry_domain ?? "not configured"}</p>
                 <p className="mt-1"><b>Operation:</b> {selected?.product?.operation_stage ?? "not configured"}</p>
+                {selected?.product?.workflow_step_id && <p className="mt-1"><b>Battery step:</b> {selected.product.workflow_step_id}. {selected.product.workflow_step_name}</p>}
+                {selected?.product?.workflow_step_id && <p className="mt-2 text-amber-700">Defect labels are restricted to this battery workflow step.</p>}
               </div>
               <label className="mt-4 block">
                 <span className="mb-1.5 block text-xs text-slate-500">Resolution notes</span>

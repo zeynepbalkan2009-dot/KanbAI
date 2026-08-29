@@ -233,6 +233,7 @@ export const batteryApi = {
     decision: "pass" | "fail";
     observed_label: string;
     notes?: string;
+    criteria_results: Record<string, "pass" | "fail">;
   }) => api.post(`/battery/evidence/${evidenceId}/review`, data),
   registerCell: (unitId: string, data: {
     cell_identifier: string;

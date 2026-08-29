@@ -8,11 +8,15 @@ import {
 } from "lucide-react";
 import { batteryApi, setupApi } from "@/lib/api";
 
-type StepDefinition = { step_id: number; code: string; name: string; expected_label: string; evidence_type: string };
+type StepDefinition = {
+  step_id: number; code: string; name: string; expected_label: string; evidence_type: string;
+  criteria: Array<{ id: string; label: string }>;
+};
 type Evidence = {
   id: string; step_id: number; step_name: string; expected_label: string; attempt_no: number;
   status: "awaiting_review" | "accepted" | "rejected"; human_decision?: "pass" | "fail" | null;
-  observed_label?: string | null; notes?: string | null; test_results?: Record<string, unknown>;
+  observed_label?: string | null; notes?: string | null; criteria_results?: Record<string, "pass" | "fail">;
+  test_results?: Record<string, unknown>;
 };
 type BatteryUnit = {
   id: string; product_id: string; production_line_id?: string | null; serial_number: string;
@@ -54,6 +58,7 @@ export default function BatteryWorkflowPage() {
   const [inspectionId, setInspectionId] = useState("");
   const [observedLabel, setObservedLabel] = useState("");
   const [notes, setNotes] = useState("");
+  const [criteriaResults, setCriteriaResults] = useState<Record<string, "" | "pass" | "fail">>({});
   const [eol, setEol] = useState(emptyEol);
   const [cellIdentifier, setCellIdentifier] = useState("");
   const [cellPosition, setCellPosition] = useState("");
@@ -73,6 +78,7 @@ export default function BatteryWorkflowPage() {
     setSelected(response.data);
     const definition = steps.find((item) => item.step_id === response.data.current_step);
     setObservedLabel(definition?.expected_label ?? "");
+    setCriteriaResults(Object.fromEntries((definition?.criteria ?? []).map((criterion) => [criterion.id, ""])));
   }, [steps]);
 
   const load = useCallback(async () => {
@@ -174,10 +180,17 @@ export default function BatteryWorkflowPage() {
 
   const review = async (decision: "pass" | "fail") => {
     if (!selected || !pendingEvidence) return;
+    if (!currentDefinition?.criteria.every((criterion) => criteriaResults[criterion.id] === "pass" || criteriaResults[criterion.id] === "fail")) {
+      return toast.error("Tum kontrol kriterleri icin PASS veya FAIL secin");
+    }
+    const failedCriteria = currentDefinition.criteria.filter((criterion) => criteriaResults[criterion.id] === "fail");
+    if (decision === "pass" && failedCriteria.length) return toast.error("Basarisiz kriter varken asama PASS olamaz");
+    if (decision === "fail" && !failedCriteria.length) return toast.error("FAIL karari icin en az bir kriteri FAIL secin");
     setSaving(true);
     try {
       await batteryApi.reviewEvidence(pendingEvidence.id, {
         decision, observed_label: observedLabel || pendingEvidence.expected_label, notes: notes || undefined,
+        criteria_results: criteriaResults as Record<string, "pass" | "fail">,
       });
       toast.success(decision === "pass" ? "Asama insan tarafindan onaylandi" : "Batarya kalite blokajina alindi");
       await load();
@@ -252,7 +265,12 @@ export default function BatteryWorkflowPage() {
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={eol.electrical_safety_passed} onChange={e=>setEol({...eol,electrical_safety_passed:e.target.checked})}/> Elektriksel guvenlik: PASS</label>
                   <p className="text-xs text-slate-500 md:col-span-3">Isaretlenmeyen testler FAIL sonucu olarak kaydedilir. Sistem otomatik kalite karari vermez; son karar insan incelemesindedir.</p>
                 </div>}
-                {!pendingEvidence ? <button disabled={saving} onClick={addEvidence} className="mt-4 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Kaniti incelemeye gonder</button> : <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="flex items-center gap-2 text-sm font-semibold text-amber-800"><ShieldAlert size={17}/> Insan karari bekleniyor</p><div className="mt-3 flex gap-2"><button disabled={saving} onClick={()=>review("pass")} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">PASS - asamayi onayla</button><button disabled={saving} onClick={()=>review("fail")} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white">FAIL - kalite blokaji</button></div></div>}
+                {!pendingEvidence ? <button disabled={saving} onClick={addEvidence} className="mt-4 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Kaniti incelemeye gonder</button> : <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-amber-800"><ShieldAlert size={17}/> Insan karari bekleniyor</p>
+                  {currentDefinition.step_id <= 5 && <p className="mt-2 text-xs text-amber-800">Once bagli fotografi Inceleme Kuyrugu'nda etiketleyin. Asama karari bu HITL karariyla ayni olmalidir.</p>}
+                  <div className="mt-3 grid gap-2">{currentDefinition.criteria.map((criterion)=><label key={criterion.id} className="grid gap-2 rounded-lg border border-amber-200 bg-white p-3 text-sm sm:grid-cols-[1fr_150px] sm:items-center"><span>{criterion.label}</span><select value={criteriaResults[criterion.id] ?? ""} onChange={(event)=>setCriteriaResults({...criteriaResults,[criterion.id]:event.target.value as ""|"pass"|"fail"})} className="rounded border px-2 py-1"><option value="">Secin</option><option value="pass">PASS</option><option value="fail">FAIL</option></select></label>)}</div>
+                  <div className="mt-3 flex gap-2"><button disabled={saving} onClick={()=>review("pass")} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">PASS - asamayi onayla</button><button disabled={saving} onClick={()=>review("fail")} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white">FAIL - kalite blokaji</button></div>
+                </div>}
               </div>}
             </>}
           </section>

@@ -10,7 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.domains.auth.service import CurrentUser, get_current_user, require_role
-from app.infrastructure.database.models import DatasetContribution, HITLReview, InspectionResult, Product
+from app.infrastructure.database.models import (
+    BatteryStepEvidence,
+    BatteryUnit,
+    DatasetContribution,
+    HITLReview,
+    InspectionResult,
+    Product,
+)
 from app.infrastructure.database.session import get_db
 
 router = APIRouter(prefix="/hitl", tags=["human-in-the-loop"])
@@ -149,6 +156,13 @@ async def review_hitl(inspection_id: str, body: HITLDecisionIn, current: Current
 
     include_in_dataset = body.dataset_contribution or settings.pilot_mode
     if include_in_dataset:
+        battery_evidence = await db.scalar(
+            select(BatteryStepEvidence)
+            .where(BatteryStepEvidence.inspection_id == inspection.id)
+            .order_by(BatteryStepEvidence.created_at.desc())
+            .limit(1)
+        )
+        battery_unit = await db.get(BatteryUnit, battery_evidence.battery_unit_id) if battery_evidence else None
         metadata = {
             "decision": normalized,
             "product_id": context["product_id"],
@@ -157,6 +171,11 @@ async def review_hitl(inspection_id: str, body: HITLDecisionIn, current: Current
             "industry_domain": context["industry_domain"],
             "operation_stage": context["operation_stage"],
             "profile_defect_classes": context["defect_classes"],
+            "battery_unit_id": str(battery_unit.id) if battery_unit else None,
+            "battery_serial_number": battery_unit.serial_number if battery_unit else None,
+            "battery_workflow_step_id": battery_evidence.step_id if battery_evidence else None,
+            "battery_workflow_step_name": battery_evidence.step_name if battery_evidence else None,
+            "battery_evidence_id": str(battery_evidence.id) if battery_evidence else None,
         }
         existing_dataset = await db.execute(select(DatasetContribution).where(DatasetContribution.inspection_id == inspection.id))
         contribution = existing_dataset.scalar_one_or_none()

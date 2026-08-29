@@ -333,6 +333,7 @@ class BatteryStepEvidence(Base):
     human_decision: Mapped[Optional[str]] = mapped_column(String(20))
     observed_label: Mapped[Optional[str]] = mapped_column(String(100))
     notes: Mapped[Optional[str]] = mapped_column(Text)
+    criteria_results: Mapped[Optional[dict]] = mapped_column(JSONB, default=dict)
     test_results: Mapped[Optional[dict]] = mapped_column(JSONB, default=dict)
     captured_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     reviewed_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))

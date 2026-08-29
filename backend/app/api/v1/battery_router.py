@@ -25,12 +25,36 @@ router = APIRouter(prefix="/battery", tags=["battery-traceability"])
 REVIEW_ROLES = ("admin", "manager", "quality_manager")
 
 BATTERY_STEPS = (
-    {"step_id": 1, "code": "cell_preparation", "name": "Cell Preparation & Incoming QC", "expected_label": "cell_block_valid", "evidence_type": "visual_and_identity"},
-    {"step_id": 2, "code": "module_assembly", "name": "Module Assembly", "expected_label": "isolation_plate_ok", "evidence_type": "visual"},
-    {"step_id": 3, "code": "welding_busbar", "name": "Welding & Busbar Integration", "expected_label": "busbar_secure", "evidence_type": "visual"},
-    {"step_id": 4, "code": "bms_integration", "name": "BMS & Harness Connection", "expected_label": "harness_connected", "evidence_type": "visual_and_configuration"},
-    {"step_id": 5, "code": "packaging_sealing", "name": "Packaging & Sealing", "expected_label": "gasket_sealed", "evidence_type": "visual_and_test"},
-    {"step_id": 6, "code": "eol_test", "name": "EOL & Final QC", "expected_label": "eol_passed", "evidence_type": "test_results"},
+    {"step_id": 1, "code": "cell_preparation", "name": "Cell Preparation & Incoming QC", "expected_label": "cell_block_valid", "evidence_type": "visual_and_identity", "criteria": (
+        {"id": "identity_type_match", "label": "Cell identity and declared physical type match"},
+        {"id": "barcode_qr_readable", "label": "Barcode or QR identity is readable"},
+        {"id": "no_visible_cell_damage", "label": "No visible incoming cell damage"},
+    )},
+    {"step_id": 2, "code": "module_assembly", "name": "Module Assembly", "expected_label": "isolation_plate_ok", "evidence_type": "visual", "criteria": (
+        {"id": "cell_arrangement_correct", "label": "Cell arrangement and count are correct"},
+        {"id": "insulation_plates_complete", "label": "Insulation plates are complete"},
+        {"id": "polarity_orientation_correct", "label": "Cell polarity and orientation are correct"},
+    )},
+    {"step_id": 3, "code": "welding_busbar", "name": "Welding & Busbar Integration", "expected_label": "busbar_secure", "evidence_type": "visual", "criteria": (
+        {"id": "busbar_position_correct", "label": "Busbar position and orientation are correct"},
+        {"id": "weld_presence_complete", "label": "Required weld connections are present"},
+        {"id": "no_visible_weld_damage", "label": "No visible weld or terminal damage"},
+    )},
+    {"step_id": 4, "code": "bms_integration", "name": "BMS & Harness Connection", "expected_label": "harness_connected", "evidence_type": "visual_and_configuration", "criteria": (
+        {"id": "bms_present_secured", "label": "BMS is present and mechanically secured"},
+        {"id": "harness_routing_correct", "label": "Harness routing and connectors are correct"},
+        {"id": "pinout_verified", "label": "Pinout was verified against the work instruction"},
+    )},
+    {"step_id": 5, "code": "packaging_sealing", "name": "Packaging & Sealing", "expected_label": "gasket_sealed", "evidence_type": "visual_and_test", "criteria": (
+        {"id": "module_placement_correct", "label": "Modules are correctly positioned in the enclosure"},
+        {"id": "gasket_continuity_verified", "label": "Gasket continuity is verified"},
+        {"id": "cover_alignment_correct", "label": "Cover alignment is correct before closure"},
+    )},
+    {"step_id": 6, "code": "eol_test", "name": "EOL & Final QC", "expected_label": "eol_passed", "evidence_type": "test_results", "criteria": (
+        {"id": "electrical_safety_reviewed", "label": "Electrical safety result was reviewed"},
+        {"id": "charge_discharge_reviewed", "label": "Charge-discharge result was reviewed"},
+        {"id": "leak_test_reviewed", "label": "Leak-test result was reviewed"},
+    )},
 )
 STEP_BY_ID = {step["step_id"]: step for step in BATTERY_STEPS}
 
@@ -69,6 +93,7 @@ class StepReviewIn(BaseModel):
     decision: Literal["pass", "fail"]
     observed_label: str = Field(min_length=2, max_length=100)
     notes: Optional[str] = None
+    criteria_results: dict[str, Literal["pass", "fail"]]
 
 
 class BatteryCellCreate(BaseModel):
@@ -135,6 +160,7 @@ def evidence_out(item: BatteryStepEvidence) -> dict:
         "human_decision": item.human_decision,
         "observed_label": item.observed_label,
         "notes": item.notes,
+        "criteria_results": item.criteria_results or {},
         "test_results": item.test_results or {},
         "reviewed_at": item.reviewed_at,
         "created_at": item.created_at,
@@ -276,6 +302,10 @@ async def create_step_evidence(unit_id: uuid.UUID, step_id: int, body: StepEvide
             raise NotFoundError("Inspection")
         if inspection.product_id and inspection.product_id != unit.product_id:
             raise ValidationError("Inspection product does not match the battery unit product")
+        if inspection.station_id and inspection.station_id != body.station_id:
+            raise ValidationError("Inspection station does not match the selected workflow station")
+        if inspection.serial_number and inspection.serial_number != unit.serial_number:
+            raise ValidationError("Inspection serial number does not match the battery unit")
     normalized_test_results = body.test_results
     if step_id == 6:
         try:
@@ -308,6 +338,24 @@ async def review_step_evidence(evidence_id: uuid.UUID, body: StepReviewIn, curre
     if item.status != "awaiting_review":
         raise ConflictError("Evidence has already been reviewed")
     unit = await get_unit(db, item.battery_unit_id, current.tenant_id)
+    step = STEP_BY_ID[item.step_id]
+    expected_criteria = {criterion["id"] for criterion in step["criteria"]}
+    supplied_criteria = set(body.criteria_results)
+    if supplied_criteria != expected_criteria:
+        missing = sorted(expected_criteria - supplied_criteria)
+        unknown = sorted(supplied_criteria - expected_criteria)
+        raise ValidationError(f"Criteria results must exactly match this step; missing={missing}, unknown={unknown}")
+    failed_criteria = [criterion_id for criterion_id, result in body.criteria_results.items() if result == "fail"]
+    if body.decision == "pass" and failed_criteria:
+        raise ValidationError("A step cannot PASS while one or more required criteria are marked FAIL")
+    if body.decision == "fail" and not failed_criteria:
+        raise ValidationError("A FAIL decision requires at least one failed criterion")
+    if item.step_id <= 5:
+        inspection = await db.get(InspectionResult, item.inspection_id)
+        if not inspection or inspection.operator_decision not in {"pass", "fail"}:
+            raise ValidationError("Review the linked inspection in the canonical HITL queue before closing this battery step")
+        if inspection.operator_decision != body.decision:
+            raise ValidationError("Battery step decision must match the linked inspection's human HITL decision")
     if item.step_id == 1 and body.decision == "pass":
         cells = await db.execute(select(BatteryCellComponent).where(BatteryCellComponent.battery_unit_id == unit.id))
         registered_cells = list(cells.scalars().all())
@@ -319,6 +367,7 @@ async def review_step_evidence(evidence_id: uuid.UUID, body: StepReviewIn, curre
     item.human_decision = body.decision
     item.observed_label = body.observed_label.strip()
     item.notes = body.notes
+    item.criteria_results = body.criteria_results
     item.reviewed_by = uuid.UUID(current.user_id)
     item.reviewed_at = now
     item.status = "accepted" if body.decision == "pass" else "rejected"

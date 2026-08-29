@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError as PydanticValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,6 +51,18 @@ class StepEvidenceCreate(BaseModel):
     observed_label: Optional[str] = Field(default=None, max_length=100)
     notes: Optional[str] = None
     test_results: dict[str, Any] = Field(default_factory=dict)
+
+
+class EOLTestResults(BaseModel):
+    voltage_v: float = Field(gt=0)
+    insulation_resistance_mohm: float = Field(ge=0)
+    capacity_ah: float = Field(gt=0)
+    leak_test_passed: bool
+    charge_discharge_passed: bool
+    electrical_safety_passed: bool
+    tester_id: str = Field(min_length=2, max_length=120)
+    tested_at: datetime
+    test_report_id: Optional[str] = Field(default=None, max_length=255)
 
 
 class StepReviewIn(BaseModel):
@@ -251,18 +263,26 @@ async def create_step_evidence(unit_id: uuid.UUID, step_id: int, body: StepEvide
         raise ConflictError("Battery workflow is already completed")
     if step_id != unit.current_step:
         raise ConflictError(f"Evidence must be recorded for current_step={unit.current_step}")
-    if body.station_id:
-        station = await db.get(Station, body.station_id)
-        if not station or str(station.factory_id) != current.tenant_id:
-            raise NotFoundError("Station")
+    if not body.station_id:
+        raise ValidationError("Station is required for battery workflow evidence")
+    station = await db.get(Station, body.station_id)
+    if not station or str(station.factory_id) != current.tenant_id:
+        raise NotFoundError("Station")
+    if step_id <= 5 and not body.inspection_id:
+        raise ValidationError("Visual workflow steps 1-5 require an inspection record")
     if body.inspection_id:
         inspection = await db.get(InspectionResult, body.inspection_id)
         if not inspection or str(inspection.factory_id) != current.tenant_id:
             raise NotFoundError("Inspection")
         if inspection.product_id and inspection.product_id != unit.product_id:
             raise ValidationError("Inspection product does not match the battery unit product")
-    if step_id == 6 and not body.test_results:
-        raise ValidationError("EOL evidence requires test_results; RGB imagery alone is not an EOL test")
+    normalized_test_results = body.test_results
+    if step_id == 6:
+        try:
+            normalized_test_results = EOLTestResults.model_validate(body.test_results).model_dump(mode="json")
+        except PydanticValidationError as exc:
+            missing_or_invalid = ", ".join(".".join(str(part) for part in error["loc"]) for error in exc.errors())
+            raise ValidationError(f"EOL evidence has missing or invalid test fields: {missing_or_invalid}") from exc
     pending = await db.execute(select(BatteryStepEvidence.id).where(BatteryStepEvidence.battery_unit_id == unit.id, BatteryStepEvidence.step_id == step_id, BatteryStepEvidence.status == "awaiting_review"))
     if pending.scalar_one_or_none():
         raise ConflictError("This step already has evidence awaiting human review")
@@ -272,7 +292,7 @@ async def create_step_evidence(unit_id: uuid.UUID, step_id: int, body: StepEvide
         station_id=body.station_id, inspection_id=body.inspection_id, step_id=step_id,
         step_name=step["name"], expected_label=step["expected_label"],
         attempt_no=(attempts.scalar() or 0) + 1, status="awaiting_review",
-        observed_label=body.observed_label, notes=body.notes, test_results=body.test_results,
+        observed_label=body.observed_label, notes=body.notes, test_results=normalized_test_results,
         captured_by=uuid.UUID(current.user_id),
     )
     db.add(item)

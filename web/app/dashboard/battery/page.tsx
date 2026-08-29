@@ -23,7 +23,11 @@ type BatteryUnit = {
 type Product = { id: string; sku: string; name: string; revision?: string; defect_policy?: { industry_domain?: string } };
 type Resource = { id: string; code?: string; name: string };
 
-const emptyEol = { voltage_v: "", insulation_resistance_mohm: "", capacity_ah: "", leak_test_passed: false, charge_discharge_passed: false };
+const emptyEol = {
+  voltage_v: "", insulation_resistance_mohm: "", capacity_ah: "",
+  leak_test_passed: false, charge_discharge_passed: false, electrical_safety_passed: false,
+  tester_id: "", tested_at: "", test_report_id: "",
+};
 
 function statusTone(status: string) {
   if (status === "completed" || status === "accepted") return "border-emerald-200 bg-emerald-50 text-emerald-700";
@@ -140,16 +144,20 @@ export default function BatteryWorkflowPage() {
 
   const addEvidence = async () => {
     if (!selected || !currentDefinition) return;
+    if (!stationId) return toast.error("Kanit icin istasyon secimi gerekli");
+    if (currentDefinition.step_id <= 5 && !inspectionId.trim()) return toast.error("Gorsel asamalar icin muayene UUID gerekli");
+    if (currentDefinition.step_id === 6 && (!eol.voltage_v || !eol.insulation_resistance_mohm || !eol.capacity_ah || !eol.tester_id.trim() || !eol.tested_at)) {
+      return toast.error("EOL icin olcumler, test cihazi ve test zamani gerekli");
+    }
     const testResults = currentDefinition.step_id === 6
       ? {
           voltage_v: Number(eol.voltage_v), insulation_resistance_mohm: Number(eol.insulation_resistance_mohm),
           capacity_ah: Number(eol.capacity_ah), leak_test_passed: eol.leak_test_passed,
           charge_discharge_passed: eol.charge_discharge_passed,
+          electrical_safety_passed: eol.electrical_safety_passed, tester_id: eol.tester_id.trim(),
+          tested_at: new Date(eol.tested_at).toISOString(), test_report_id: eol.test_report_id.trim() || undefined,
         }
       : {};
-    if (currentDefinition.step_id === 6 && (!eol.voltage_v || !eol.insulation_resistance_mohm || !eol.capacity_ah)) {
-      return toast.error("EOL icin voltaj, izolasyon direnci ve kapasite gerekli");
-    }
     setSaving(true);
     try {
       await batteryApi.addEvidence(selected.id, currentDefinition.step_id, {
@@ -228,11 +236,22 @@ export default function BatteryWorkflowPage() {
                 <p className="mt-1 text-xs text-slate-500">Beklenen referans: {currentDefinition.expected_label}. Son karar insana aittir.</p>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <select value={stationId} onChange={(e)=>setStationId(e.target.value)} className="rounded-lg border bg-white px-3 py-2"><option value="">Istasyon secilmedi</option>{stations.map(s=><option key={s.id} value={s.id}>{s.code} - {s.name}</option>)}</select>
-                  <input value={inspectionId} onChange={(e)=>setInspectionId(e.target.value)} placeholder="Muayene UUID (opsiyonel)" className="rounded-lg border px-3 py-2"/>
+                  <input value={inspectionId} onChange={(e)=>setInspectionId(e.target.value)} placeholder={currentDefinition.step_id <= 5 ? "Muayene UUID (zorunlu)" : "Muayene UUID (opsiyonel)"} className="rounded-lg border px-3 py-2"/>
                   <input value={observedLabel} onChange={(e)=>setObservedLabel(e.target.value)} placeholder="Gozlenen etiket" className="rounded-lg border px-3 py-2"/>
                   <input value={notes} onChange={(e)=>setNotes(e.target.value)} placeholder="Operator / kalite notu" className="rounded-lg border px-3 py-2"/>
                 </div>
-                {currentDefinition.step_id===6 && <div className="mt-3 grid gap-3 md:grid-cols-3"><input value={eol.voltage_v} onChange={e=>setEol({...eol,voltage_v:e.target.value})} placeholder="Voltaj (V)" className="rounded-lg border px-3 py-2"/><input value={eol.insulation_resistance_mohm} onChange={e=>setEol({...eol,insulation_resistance_mohm:e.target.value})} placeholder="Izolasyon (MOhm)" className="rounded-lg border px-3 py-2"/><input value={eol.capacity_ah} onChange={e=>setEol({...eol,capacity_ah:e.target.value})} placeholder="Kapasite (Ah)" className="rounded-lg border px-3 py-2"/><label className="text-sm"><input type="checkbox" checked={eol.leak_test_passed} onChange={e=>setEol({...eol,leak_test_passed:e.target.checked})}/> Sizdirmazlik testi kaydi</label><label className="text-sm"><input type="checkbox" checked={eol.charge_discharge_passed} onChange={e=>setEol({...eol,charge_discharge_passed:e.target.checked})}/> Sarj-desarj testi kaydi</label></div>}
+                {currentDefinition.step_id===6 && <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  <input value={eol.voltage_v} onChange={e=>setEol({...eol,voltage_v:e.target.value})} placeholder="Voltaj (V)" type="number" step="any" className="rounded-lg border px-3 py-2"/>
+                  <input value={eol.insulation_resistance_mohm} onChange={e=>setEol({...eol,insulation_resistance_mohm:e.target.value})} placeholder="Izolasyon (MOhm)" type="number" step="any" className="rounded-lg border px-3 py-2"/>
+                  <input value={eol.capacity_ah} onChange={e=>setEol({...eol,capacity_ah:e.target.value})} placeholder="Kapasite (Ah)" type="number" step="any" className="rounded-lg border px-3 py-2"/>
+                  <input value={eol.tester_id} onChange={e=>setEol({...eol,tester_id:e.target.value})} placeholder="Test cihazi kimligi" className="rounded-lg border px-3 py-2"/>
+                  <input value={eol.tested_at} onChange={e=>setEol({...eol,tested_at:e.target.value})} type="datetime-local" aria-label="Test zamani" className="rounded-lg border px-3 py-2"/>
+                  <input value={eol.test_report_id} onChange={e=>setEol({...eol,test_report_id:e.target.value})} placeholder="Test raporu / MES referansi (opsiyonel)" className="rounded-lg border px-3 py-2"/>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={eol.leak_test_passed} onChange={e=>setEol({...eol,leak_test_passed:e.target.checked})}/> Sizdirmazlik sonucu: PASS</label>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={eol.charge_discharge_passed} onChange={e=>setEol({...eol,charge_discharge_passed:e.target.checked})}/> Sarj-desarj sonucu: PASS</label>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={eol.electrical_safety_passed} onChange={e=>setEol({...eol,electrical_safety_passed:e.target.checked})}/> Elektriksel guvenlik: PASS</label>
+                  <p className="text-xs text-slate-500 md:col-span-3">Isaretlenmeyen testler FAIL sonucu olarak kaydedilir. Sistem otomatik kalite karari vermez; son karar insan incelemesindedir.</p>
+                </div>}
                 {!pendingEvidence ? <button disabled={saving} onClick={addEvidence} className="mt-4 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Kaniti incelemeye gonder</button> : <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="flex items-center gap-2 text-sm font-semibold text-amber-800"><ShieldAlert size={17}/> Insan karari bekleniyor</p><div className="mt-3 flex gap-2"><button disabled={saving} onClick={()=>review("pass")} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">PASS - asamayi onayla</button><button disabled={saving} onClick={()=>review("fail")} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white">FAIL - kalite blokaji</button></div></div>}
               </div>}
             </>}

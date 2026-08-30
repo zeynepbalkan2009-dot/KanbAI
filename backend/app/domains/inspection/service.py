@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundError, TenantIsolationError
 from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
-from app.infrastructure.database.models import InspectionResult, Device
+from app.infrastructure.database.models import Device, InspectionResult, Product, ProductionLine, Shift, Station
 from app.infrastructure.storage.minio_client import upload_image, validate_image, get_presigned_url
 from app.core.config import get_settings
 
@@ -128,6 +128,25 @@ class InspectionService:
         """
         # Validate device belongs to this tenant
         device = await self._get_device(device_id)
+        if settings.pilot_mode:
+            missing = [
+                name for name, value in (
+                    ("station_id", station_id),
+                    ("product_id", product_id),
+                    ("serial_number", serial_number),
+                ) if not value
+            ]
+            if missing:
+                raise ValidationError("Pilot captures require: " + ", ".join(missing))
+
+        station = await self._get_station(station_id or (str(device.station_id) if device.station_id else None))
+        product = await self._get_product(product_id)
+        line = await self._get_line(production_line_id)
+        shift = await self._get_shift(shift_id)
+        if station and line and station.production_line_id and station.production_line_id != line.id:
+            raise ValidationError("Station does not belong to the selected production line")
+        if station and station.production_line_id and not line:
+            line = await self._get_line(str(station.production_line_id))
 
         if idempotency_key:
             existing = await self.db.execute(
@@ -167,10 +186,10 @@ class InspectionService:
             image_path=image_path,
             decision="pending",
             inference_status="queued",
-            production_line_id=uuid.UUID(production_line_id) if production_line_id else None,
-            station_id=uuid.UUID(station_id) if station_id else getattr(device, "station_id", None),
-            product_id=uuid.UUID(product_id) if product_id else None,
-            shift_id=uuid.UUID(shift_id) if shift_id else None,
+            production_line_id=line.id if line else None,
+            station_id=station.id if station else None,
+            product_id=product.id if product else None,
+            shift_id=shift.id if shift else None,
             serial_number=serial_number,
             lot_number=lot_number,
             captured_at=captured_at,
@@ -279,7 +298,56 @@ class InspectionService:
         device = result.scalar_one_or_none()
         if not device:
             raise NotFoundError("Device")
+        if not device.is_active or device.status != "active" or device.revoked_at is not None:
+            raise ValidationError("Device is not active for capture")
         return device
+
+    @staticmethod
+    def _parse_uuid(value: str, resource: str) -> uuid.UUID:
+        try:
+            return uuid.UUID(value)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError(f"Invalid {resource} id") from exc
+
+    async def _get_station(self, station_id: Optional[str]) -> Optional[Station]:
+        if not station_id:
+            return None
+        station = await self.db.get(Station, self._parse_uuid(station_id, "station"))
+        if not station or station.factory_id != self.tenant_uuid or station.deleted_at is not None:
+            raise NotFoundError("Station")
+        if station.status != "active":
+            raise ValidationError("Station is not active")
+        return station
+
+    async def _get_product(self, product_id: Optional[str]) -> Optional[Product]:
+        if not product_id:
+            return None
+        product = await self.db.get(Product, self._parse_uuid(product_id, "product"))
+        if not product or product.factory_id != self.tenant_uuid or product.deleted_at is not None:
+            raise NotFoundError("Product")
+        if not product.is_active:
+            raise ValidationError("Product is not active")
+        return product
+
+    async def _get_line(self, line_id: Optional[str]) -> Optional[ProductionLine]:
+        if not line_id:
+            return None
+        line = await self.db.get(ProductionLine, self._parse_uuid(line_id, "production line"))
+        if not line or line.factory_id != self.tenant_uuid or line.deleted_at is not None:
+            raise NotFoundError("Production line")
+        if line.status != "active":
+            raise ValidationError("Production line is not active")
+        return line
+
+    async def _get_shift(self, shift_id: Optional[str]) -> Optional[Shift]:
+        if not shift_id:
+            return None
+        shift = await self.db.get(Shift, self._parse_uuid(shift_id, "shift"))
+        if not shift or shift.factory_id != self.tenant_uuid or shift.deleted_at is not None:
+            raise NotFoundError("Shift")
+        if not shift.is_active:
+            raise ValidationError("Shift is not active")
+        return shift
 
     @staticmethod
     def add_presigned_url(inspection: InspectionResult) -> InspectionOut:

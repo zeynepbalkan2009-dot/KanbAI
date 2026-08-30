@@ -127,7 +127,7 @@ try {
   if ($PilotDomain -eq "battery") {
     $domainProducts = @($products | Where-Object { $_.defect_policy.industry_domain -eq "battery_assembly" })
     $workflowStations = @($stations | Where-Object { $_.metadata.workflow -eq "battery_assembly_v1" })
-    $workflowSteps = @($workflowStations | ForEach-Object { [int]$_.metadata.workflow_step } | Sort-Object -Unique)
+    $workflowSteps = @($workflowStations | ForEach-Object { [int]($_.metadata.workflow_step) } | Sort-Object -Unique)
     if ($domainProducts.Count -gt 0) { Pass "$($domainProducts.Count) active battery product profile(s)" } else { FailCheck "no active battery product profile" }
     if ($workflowSteps.Count -eq 6 -and (($workflowSteps -join ',') -eq '1,2,3,4,5,6')) {
       Pass "all six battery workflow stations are configured"

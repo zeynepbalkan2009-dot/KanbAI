@@ -533,6 +533,7 @@ export default function OperatorCapturePage() {
                           : `Bu fotograf otomatik olarak adim ${batteryUnit.current_step} kanitina baglanacak; kalite karari insan tarafindan verilecek.`
                         : "Fotograf gondermeden once seri numarali batarya kaydi zorunludur."}
                     </p>
+                    {!batteryUnit && <a href="/dashboard/battery" className="mt-2 inline-block text-[11px] font-semibold text-sky-300 underline underline-offset-2">Batarya Izlenebilirlik ekraninda gercek seri kaydi olusturun</a>}
                     {batteryUnit && batteryUnit.current_step <= 5 && <p className={`mt-1 text-[11px] font-semibold ${station ? "text-emerald-300" : "text-red-300"}`}>Istasyon: {station ? `${station.code} - ${station.name}` : `Adim ${batteryUnit.current_step} icin eslesen istasyon yok`}</p>}
                   </label>
                 )}

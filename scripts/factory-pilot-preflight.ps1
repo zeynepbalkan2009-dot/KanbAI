@@ -108,10 +108,10 @@ try {
   $me = Invoke-Json "Get" "$ApiBaseUrl/api/v1/auth/me" $headers
   if ($me.role -eq "admin") { Pass "pilot admin session" } else { FailCheck "preflight account is not admin" }
 
-  $products = @(Invoke-Json "Get" "$ApiBaseUrl/api/v1/products?active_only=true" $headers)
-  $lines = @(Invoke-Json "Get" "$ApiBaseUrl/api/v1/production-lines?active_only=true" $headers)
-  $stations = @(Invoke-Json "Get" "$ApiBaseUrl/api/v1/stations?active_only=true" $headers)
-  $devices = @(Invoke-Json "Get" "$ApiBaseUrl/api/v1/devices" $headers)
+  $products = @(Invoke-Json "Get" "$ApiBaseUrl/api/v1/products?active_only=true" $headers | Where-Object { $null -ne $_ })
+  $lines = @(Invoke-Json "Get" "$ApiBaseUrl/api/v1/production-lines?active_only=true" $headers | Where-Object { $null -ne $_ })
+  $stations = @(Invoke-Json "Get" "$ApiBaseUrl/api/v1/stations?active_only=true" $headers | Where-Object { $null -ne $_ })
+  $devices = @(Invoke-Json "Get" "$ApiBaseUrl/api/v1/devices" $headers | Where-Object { $null -ne $_ })
   $dataset = Invoke-Json "Get" "$ApiBaseUrl/api/v1/hitl/dataset-summary" $headers
 
   if ($lines.Count -gt 0) { Pass "$($lines.Count) active production line(s)" } else { FailCheck "no active production line" }
@@ -140,8 +140,9 @@ try {
     } else {
       FailCheck "battery workflow station steps are incomplete: $($workflowSteps -join ',')"
     }
-    $units = @(Invoke-Json "Get" "$ApiBaseUrl/api/v1/battery/units?limit=200" $headers)
-    $openUnits = @($units | Where-Object { $_.status -ne "completed" })
+    $units = @(Invoke-Json "Get" "$ApiBaseUrl/api/v1/battery/units?limit=200" $headers | Where-Object { $null -ne $_ })
+    $domainProductIds = @($domainProducts | ForEach-Object { "$($_.id)" })
+    $openUnits = @($units | Where-Object { $_.status -ne "completed" -and $domainProductIds -contains "$($_.product_id)" })
     if ($openUnits.Count -gt 0) { Pass "$($openUnits.Count) open battery serial record(s)" } else { WarnCheck "no open battery serial record; create one before capture" }
   } else {
     $domainProducts = @($products | Where-Object { $_.defect_policy.industry_domain -eq "steel_equipment" })

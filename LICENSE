@@ -1,0 +1,30 @@
+KanbAI Vision — Source-Available Evaluation License
+
+Copyright (c) 2026 Zeynep Balkan / KanbAI Vision.
+All rights reserved.
+
+This repository is made publicly accessible for technical evaluation,
+security review, research discussion, collaboration, and demonstration.
+
+Permission is granted to view the source code and to make local, non-commercial
+copies for evaluation and development purposes.
+
+Without prior written permission from the copyright holder, you may NOT:
+
+- use this software or substantial portions of its source code for commercial
+  products or services;
+- sell, sublicense, or redistribute the software or derivative works;
+- deploy the software as a commercial service for third parties;
+- remove copyright or license notices;
+- use the KanbAI name, branding, logos, or trademarks to imply endorsement.
+
+Any commercial use, production deployment for third parties, redistribution,
+or licensing of derivative works requires a separate written agreement with
+KanbAI Vision.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+For commercial licensing or partnership discussions, contact the repository
+maintainer.

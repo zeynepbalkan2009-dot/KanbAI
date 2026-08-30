@@ -78,6 +78,27 @@ The test checks health, readiness, an admin session, and that both demo
 seed/reset endpoints return HTTP 403. It does not create, reset, upload, or
 review inspection data.
 
+### Full factory go/no-go preflight
+
+Immediately before factory line use, run the read-only preflight. It verifies
+Docker services, migration head, runtime safety flags, HTTPS/API health, active
+resources, device registration, dataset collection-only state, and either the
+battery or steel pilot configuration. It does not create or modify records.
+
+```powershell
+.\scripts\factory-pilot-preflight.ps1 `
+  -ApiBaseUrl 'https://pilot.example-factory.com' `
+  -Email 'qa.admin@example-factory.com' `
+  -Password '<admin-password>' `
+  -PilotDomain battery `
+  -Yolo
+```
+
+Use `-PilotDomain steel` for the steel-equipment pilot. Omit `-Yolo` when the
+stack is intentionally running in `data_collection` mode. Any `FAIL` produces
+a `NO-GO` exit code; warnings require acknowledgement but do not claim that a
+validated product-quality model exists.
+
 ## Go/no-go before line use
 
 - Verify the API log contains `demo_seed_skipped_for_pilot_mode`.

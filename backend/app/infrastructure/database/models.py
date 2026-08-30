@@ -197,6 +197,7 @@ class InspectionResult(Base):
     lot_number: Mapped[Optional[str]] = mapped_column(String(120))
     idempotency_key: Mapped[Optional[str]] = mapped_column(String(120))
     captured_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    capture_quality: Mapped[Optional[dict]] = mapped_column(JSONB, default=dict)
     image_path: Mapped[str] = mapped_column(String(500), nullable=False)
     image_key: Mapped[str] = mapped_column(String(500), nullable=False)
     thumbnail_key: Mapped[Optional[str]] = mapped_column(String(500))

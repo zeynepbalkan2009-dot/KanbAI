@@ -59,6 +59,10 @@ type InspectionResult = {
   confidence?: number | null;
   defects?: Array<{ class_name: string; confidence: number }>;
   inference_latency_ms?: number;
+  capture_quality?: {
+    usable: boolean; width: number; height: number; brightness: number; contrast: number; sharpness: number;
+    reasons: string[]; product_quality_decision: false;
+  };
 };
 
 type BatteryUnit = {
@@ -346,8 +350,8 @@ export default function OperatorCapturePage() {
       } else {
         toast.success("Fotograf insan inceleme kuyruguna gonderildi");
       }
-    } catch {
-      toast.error("Yukleme basarisiz");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail ?? "Yukleme basarisiz");
       setSubmitting(false);
     }
   };
@@ -637,6 +641,11 @@ export default function OperatorCapturePage() {
                   </p>
                 </div>
               </div>
+              {result?.capture_quality && <div className="mt-3 rounded-xl bg-black/20 p-3 text-xs leading-5">
+                <p className="font-semibold">Fotograf kalite kapisi: {result.capture_quality.usable ? "UYGUN" : "UYGUN DEGIL"}</p>
+                <p className="opacity-70">{result.capture_quality.width}×{result.capture_quality.height} · Parlaklik {result.capture_quality.brightness} · Kontrast {result.capture_quality.contrast} · Netlik {result.capture_quality.sharpness}</p>
+                <p className="opacity-55">Bu olcum urunun kalite karari degildir; yalnizca fotografin veri toplamaya uygunlugudur.</p>
+              </div>}
               <p className="mt-4 text-sm leading-6 opacity-75">
                 {inspectionId
                   ? result?.decision === "out_of_scope"

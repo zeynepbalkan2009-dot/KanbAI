@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     # Pilot deployments use real factory data and must never create or reset demo data.
     pilot_mode: bool = False
 
+    # Capture quality gate (image usability only; never a product quality decision)
+    capture_quality_gate_enabled: bool = True
+    capture_min_width: int = 640
+    capture_min_height: int = 480
+    capture_brightness_min: float = 25.0
+    capture_brightness_max: float = 235.0
+    capture_contrast_min: float = 12.0
+    capture_sharpness_min: float = 8.0
+
     @property
     def demo_seed_enabled(self) -> bool:
         """Whether startup may insert the baseline demo data."""

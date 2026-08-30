@@ -1,5 +1,6 @@
 """Inspection domain — upload, queue, query."""
 import uuid
+import io
 from datetime import datetime
 from typing import Optional
 
@@ -8,6 +9,7 @@ from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, TenantIsolationError
+from app.core.exceptions import ValidationError
 from app.core.logging import get_logger
 from app.infrastructure.database.models import InspectionResult, Device
 from app.infrastructure.storage.minio_client import upload_image, validate_image, get_presigned_url
@@ -15,6 +17,48 @@ from app.core.config import get_settings
 
 logger = get_logger(__name__)
 settings = get_settings()
+
+
+def analyze_capture_quality(image_data: bytes) -> dict:
+    """Measure image usability without making any product-quality inference."""
+    from PIL import Image, ImageFilter, ImageOps, ImageStat, UnidentifiedImageError
+
+    try:
+        with Image.open(io.BytesIO(image_data)) as source:
+            image = ImageOps.exif_transpose(source).convert("L")
+            width, height = image.size
+            stats = ImageStat.Stat(image)
+            brightness = float(stats.mean[0])
+            contrast = float(stats.stddev[0])
+            edge_source = image.crop((4, 4, width - 4, height - 4)) if width > 16 and height > 16 else image
+            edge_stats = ImageStat.Stat(edge_source.filter(ImageFilter.FIND_EDGES))
+            sharpness = float(edge_stats.var[0])
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValidationError("Image could not be decoded for capture-quality analysis") from exc
+
+    reasons = []
+    if width < settings.capture_min_width or height < settings.capture_min_height:
+        reasons.append("resolution_too_low")
+    if brightness < settings.capture_brightness_min:
+        reasons.append("underexposed")
+    if brightness > settings.capture_brightness_max:
+        reasons.append("overexposed")
+    if contrast < settings.capture_contrast_min:
+        reasons.append("contrast_too_low")
+    if sharpness < settings.capture_sharpness_min:
+        reasons.append("likely_blurred")
+
+    return {
+        "schema_version": "kanbai_capture_quality_v1",
+        "usable": not reasons,
+        "width": width,
+        "height": height,
+        "brightness": round(brightness, 2),
+        "contrast": round(contrast, 2),
+        "sharpness": round(sharpness, 2),
+        "reasons": reasons,
+        "product_quality_decision": False,
+    }
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -38,6 +82,7 @@ class InspectionOut(BaseModel):
     serial_number: Optional[str] = None
     lot_number: Optional[str] = None
     captured_at: Optional[datetime] = None
+    capture_quality: Optional[dict] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -98,6 +143,11 @@ class InspectionService:
 
         # Validate image
         validate_image(image_data, content_type)
+        capture_quality = analyze_capture_quality(image_data)
+        if settings.capture_quality_gate_enabled and not capture_quality["usable"]:
+            raise ValidationError(
+                "Capture quality gate rejected the image: " + ", ".join(capture_quality["reasons"])
+            )
 
         # Upload to MinIO
         image_key, image_path = await upload_image(
@@ -124,6 +174,7 @@ class InspectionService:
             serial_number=serial_number,
             lot_number=lot_number,
             captured_at=captured_at,
+            capture_quality=capture_quality,
             idempotency_key=idempotency_key,
             thumbnail_key=image_key,
         )

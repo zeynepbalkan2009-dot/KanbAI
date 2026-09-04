@@ -3,7 +3,6 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { PWARegister } from "@/components/PWARegister";
-import { LandingScan } from "@/components/LandingScan";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://kanb-ai.vercel.app"),
@@ -61,7 +60,6 @@ export default function RootLayout({
       <body className="bg-gray-950 text-gray-100 antialiased">
         <QueryProvider>
           <PWARegister />
-          <LandingScan />
           {children}
           <Toaster
             position="top-right"

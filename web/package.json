@@ -9,11 +9,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "15.5.25",
+    "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "typescript": "^5.4.5",

@@ -6,51 +6,48 @@ import { PWARegister } from "@/components/PWARegister";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://kanb-ai.vercel.app"),
-  title: "KanbAI Vision | AI Quality Inspection for Manufacturing",
+  title: "KanbAI | Visual Quality Management for Manufacturing",
   description:
-    "Turn existing factory cameras into AI-powered visual quality inspection with human verification and continuous learning.",
-  applicationName: "KanbAI Vision",
+    "Manage camera-based inspection, operator review and visual quality analytics in one workspace built for manufacturing teams.",
+  applicationName: "KanbAI",
   keywords: [
-    "industrial AI",
-    "visual inspection",
-    "quality control",
-    "computer vision",
-    "manufacturing AI",
-    "factory automation",
+    "visual quality management",
+    "quality control software",
+    "industrial computer vision",
+    "manufacturing quality",
+    "factory inspection",
   ],
+  manifest: "/manifest.webmanifest",
   openGraph: {
-    title: "KanbAI Vision | AI Quality Inspection for Manufacturing",
-    description:
-      "AI-powered visual quality inspection using the cameras factories already have.",
+    title: "KanbAI | Visual Quality Management for Manufacturing",
+    description: "Camera inspection, human review and quality analytics in one manufacturing workspace.",
     url: "https://kanb-ai.vercel.app",
-    siteName: "KanbAI Vision",
+    siteName: "KanbAI",
     type: "website",
     images: [
       {
         url: "/marketing/hero-factory.png",
         width: 1200,
         height: 630,
-        alt: "KanbAI Vision industrial AI inspection",
+        alt: "KanbAI manufacturing quality platform",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "KanbAI Vision | AI Quality Inspection for Manufacturing",
-    description:
-      "AI-powered visual quality inspection using the cameras factories already have.",
+    title: "KanbAI | Visual Quality Management for Manufacturing",
+    description: "Camera inspection, human review and quality analytics in one manufacturing workspace.",
     images: ["/marketing/hero-factory.png"],
   },
-  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     title: "KanbAI",
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#071016",
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({

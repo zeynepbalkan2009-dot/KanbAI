@@ -41,11 +41,13 @@ type RunState = "idle" | "checking" | "sample_result" | "scope_passed" | "out_of
 type ImageMetrics = {
   width: number;
   height: number;
+  aspectRatio: number;
   brightness: number;
   contrast: number;
   saturation: number;
   edgeDensity: number;
   histogram: number[];
+  signature: number[];
 };
 
 const copy = {
@@ -83,15 +85,15 @@ const copy = {
     sampleSimulation: "SAMPLE SIMULATION",
     uploadValidation: "INPUT VALIDATION",
     confidence: "Quality confidence",
-    scopeScore: "Demo scope score",
+    scopeScore: "Demo profile match",
     resultPass: "Sample result: no visible issue selected.",
     resultReview: "Sample result: surface anomaly routed to human review.",
     resultScopePassed: "Input passed the browser-side demo gate. A real quality result is intentionally withheld until the production inference backend is connected.",
-    resultOutOfScope: "Input is too dissimilar from this demo inspection profile. Quality inference was not run and no confidence score was generated.",
+    resultOutOfScope: "Input does not sufficiently match this demo inspection profile. Quality inference was not run and no confidence score was generated.",
     resultCaptureRejected: "Capture quality is not suitable for inspection. Improve framing, exposure, contrast or resolution and try again.",
     runToPopulate: "Validate the image to populate this panel.",
     inputGate: "Input validation",
-    inputGateText: "The public demo checks resolution, exposure, contrast, visual texture and similarity to the demo inspection profile before allowing the workflow to continue.",
+    inputGateText: "The public demo checks resolution, exposure, contrast, visual texture, spatial structure and similarity to the demo inspection profile before allowing the workflow to continue.",
     resolution: "Resolution",
     exposure: "Exposure",
     contrast: "Contrast",
@@ -136,7 +138,7 @@ const copy = {
     captureReasonExposure: "Image is severely underexposed or overexposed.",
     captureReasonContrast: "Image contrast is too low for a reliable visual check.",
     captureReasonTexture: "The image has too little visual structure for this inspection profile.",
-    scopeDisclaimer: "The browser scope score is a lightweight demo heuristic, not the factory-specific semantic model used in a connected deployment.",
+    scopeDisclaimer: "The browser profile match combines color, exposure, texture, aspect ratio and a coarse spatial image signature. It is still a demo heuristic, not the factory-specific semantic model used in a connected deployment.",
   },
   tr: {
     top: "Herkese açık frontend demosu — production backend bağlı değil.",
@@ -172,15 +174,15 @@ const copy = {
     sampleSimulation: "ÖRNEK SİMÜLASYON",
     uploadValidation: "GİRDİ DOĞRULAMA",
     confidence: "Kalite güven skoru",
-    scopeScore: "Demo kapsam skoru",
+    scopeScore: "Demo profil eşleşmesi",
     resultPass: "Örnek sonuç: görünür bir hata seçilmedi.",
     resultReview: "Örnek sonuç: yüzey anomalisi insan kontrolüne yönlendirildi.",
     resultScopePassed: "Girdi tarayıcı içindeki demo kontrolünü geçti. Production inference backend'i bağlı olmadığı için gerçek kalite sonucu bilinçli olarak üretilmedi.",
-    resultOutOfScope: "Girdi bu demo muayene profiline yeterince benzemiyor. Kalite analizi çalıştırılmadı ve güven skoru üretilmedi.",
+    resultOutOfScope: "Girdi bu demo muayene profiliyle yeterince eşleşmiyor. Kalite analizi çalıştırılmadı ve güven skoru üretilmedi.",
     resultCaptureRejected: "Görüntü kalitesi muayene için uygun değil. Kadrajı, pozlamayı, kontrastı veya çözünürlüğü iyileştirip tekrar deneyin.",
     runToPopulate: "Bu paneli doldurmak için görseli doğrulayın.",
     inputGate: "Girdi doğrulama",
-    inputGateText: "Herkese açık demo; iş akışına devam etmeden önce çözünürlük, pozlama, kontrast, görsel doku ve demo muayene profiline benzerliği kontrol eder.",
+    inputGateText: "Herkese açık demo; iş akışına devam etmeden önce çözünürlük, pozlama, kontrast, görsel doku, mekânsal yapı ve demo muayene profiline benzerliği kontrol eder.",
     resolution: "Çözünürlük",
     exposure: "Pozlama",
     contrast: "Kontrast",
@@ -225,7 +227,7 @@ const copy = {
     captureReasonExposure: "Görsel ciddi biçimde düşük veya yüksek pozlanmış.",
     captureReasonContrast: "Görsel kontrastı güvenilir bir kontrol için çok düşük.",
     captureReasonTexture: "Görsel bu muayene profili için yeterli görsel yapı içermiyor.",
-    scopeDisclaimer: "Tarayıcıdaki kapsam skoru hafif bir demo sezgisidir; bağlı kurulumdaki fabrikaya özel semantik model değildir.",
+    scopeDisclaimer: "Tarayıcıdaki profil eşleşmesi renk, pozlama, doku, en-boy oranı ve kaba mekânsal görüntü imzasını birlikte kullanır. Yine de bağlı kurulumdaki fabrikaya özel semantik model değildir.",
   },
 };
 
@@ -250,7 +252,8 @@ function cosineSimilarity(a: number[], b: number[]) {
   let dot = 0;
   let aa = 0;
   let bb = 0;
-  for (let i = 0; i < a.length; i += 1) {
+  const length = Math.min(a.length, b.length);
+  for (let i = 0; i < length; i += 1) {
     dot += a[i] * b[i];
     aa += a[i] * a[i];
     bb += b[i] * b[i];
@@ -319,15 +322,28 @@ async function readImageMetrics(url: string): Promise<ImageMetrics> {
     }
   }
 
-  const normalizedHistogram = histogram.map((value) => value / pixels);
+  const signatureSize = 16;
+  const rawSignature: number[] = [];
+  for (let sy = 0; sy < signatureSize; sy += 1) {
+    const y = Math.min(height - 1, Math.floor(((sy + 0.5) / signatureSize) * height));
+    for (let sx = 0; sx < signatureSize; sx += 1) {
+      const x = Math.min(width - 1, Math.floor(((sx + 0.5) / signatureSize) * width));
+      rawSignature.push(gray[y * width + x]);
+    }
+  }
+  const signatureMean = rawSignature.reduce((acc, value) => acc + value, 0) / rawSignature.length;
+  const signature = rawSignature.map((value) => value - signatureMean);
+
   return {
     width: image.naturalWidth,
     height: image.naturalHeight,
+    aspectRatio: image.naturalWidth / Math.max(1, image.naturalHeight),
     brightness,
     contrast,
     saturation,
     edgeDensity: edgeCount ? edgeSum / edgeCount : 0,
-    histogram: normalizedHistogram,
+    histogram: histogram.map((value) => value / pixels),
+    signature,
   };
 }
 
@@ -341,16 +357,21 @@ function getCaptureBlockReason(metrics: ImageMetrics) {
 
 function getScopeScore(metrics: ImageMetrics, reference: ImageMetrics) {
   const histogramSimilarity = clamp(cosineSimilarity(metrics.histogram, reference.histogram));
+  const spatialSimilarity = clamp((cosineSimilarity(metrics.signature, reference.signature) + 1) / 2);
   const brightnessSimilarity = 1 - clamp(Math.abs(metrics.brightness - reference.brightness) / 0.35);
   const contrastSimilarity = 1 - clamp(Math.abs(metrics.contrast - reference.contrast) / 0.22);
   const edgeSimilarity = 1 - clamp(Math.abs(metrics.edgeDensity - reference.edgeDensity) / 0.16);
   const saturationSimilarity = 1 - clamp(Math.abs(metrics.saturation - reference.saturation) / 0.35);
+  const ratioDelta = Math.abs(Math.log(metrics.aspectRatio / Math.max(0.01, reference.aspectRatio)));
+  const aspectSimilarity = 1 - clamp(ratioDelta / 0.7);
   return Math.round(100 * (
-    histogramSimilarity * 0.58 +
-    brightnessSimilarity * 0.11 +
-    contrastSimilarity * 0.11 +
-    edgeSimilarity * 0.12 +
-    saturationSimilarity * 0.08
+    spatialSimilarity * 0.42 +
+    histogramSimilarity * 0.28 +
+    brightnessSimilarity * 0.06 +
+    contrastSimilarity * 0.06 +
+    edgeSimilarity * 0.08 +
+    saturationSimilarity * 0.04 +
+    aspectSimilarity * 0.06
   ));
 }
 
@@ -467,7 +488,7 @@ export default function DemoPage() {
       const reference = referenceMetrics ?? await readImageMetrics("/marketing/hero-factory.png");
       const score = getScopeScore(metrics, reference);
       setScopeScore(score);
-      setRunState(score >= 58 ? "scope_passed" : "out_of_scope");
+      setRunState(score >= 68 ? "scope_passed" : "out_of_scope");
     } catch {
       setCaptureReason("resolution");
       setRunState("capture_rejected");
@@ -566,7 +587,7 @@ export default function DemoPage() {
               <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold text-slate-800">{t.inputGate}</p><p className="mt-1 max-w-2xl text-[11px] leading-5 text-slate-500">{t.inputGateText}</p></div><span className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black ${runState === "scope_passed" || runState === "sample_result" ? "bg-emerald-100 text-emerald-700" : runState === "out_of_scope" || runState === "capture_rejected" ? "bg-red-100 text-red-700" : "bg-slate-200 text-slate-500"}`}>{runState === "scope_passed" || runState === "sample_result" ? t.passed.toUpperCase() : runState === "out_of_scope" || runState === "capture_rejected" ? t.blocked.toUpperCase() : t.pending.toUpperCase()}</span></div>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-[10px] sm:grid-cols-4">{[[t.resolution,"resolution"],[t.exposure,"exposure"],[t.contrast,"contrast"],[t.texture,"texture"]].map(([label,kind]) => <div key={kind} className="rounded-lg border border-slate-200 bg-white p-2.5"><p className="text-slate-400">{label}</p><p className={`mt-1 font-bold ${metricStatus(kind as "resolution" | "exposure" | "contrast" | "texture") === t.blocked ? "text-red-600" : imageMetrics ? "text-emerald-600" : "text-slate-400"}`}>{metricStatus(kind as "resolution" | "exposure" | "contrast" | "texture")}</p></div>)}</div>
-                {!isSample && scopeScore !== null && <div className="mt-3 flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px]"><span className="text-slate-500">{t.scopeScore}</span><span className={`font-black ${scopeScore >= 58 ? "text-emerald-700" : "text-red-700"}`}>{scopeScore}%</span></div>}
+                {!isSample && scopeScore !== null && <div className="mt-3 flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px]"><span className="text-slate-500">{t.scopeScore}</span><span className={`font-black ${scopeScore >= 68 ? "text-emerald-700" : "text-red-700"}`}>{scopeScore}%</span></div>}
                 {!isSample && <p className="mt-2 text-[9px] leading-4 text-slate-400">{t.scopeDisclaimer}</p>}
               </div>
 

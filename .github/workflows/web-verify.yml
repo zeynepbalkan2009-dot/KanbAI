@@ -1,0 +1,59 @@
+name: Web verify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web-verify.yml"
+  pull_request:
+    paths:
+      - "web/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: web-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install and synchronize lockfile
+        run: npm install --ignore-scripts
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Production build
+        run: npm run build
+
+      - name: Commit synchronized lockfile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: .
+        shell: bash
+        run: |
+          if git diff --quiet -- web/package-lock.json; then
+            echo "package-lock.json is already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/package-lock.json
+          git commit -m "chore: synchronize web package lock"
+          git push

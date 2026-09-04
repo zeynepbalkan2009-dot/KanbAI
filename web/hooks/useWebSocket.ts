@@ -53,7 +53,7 @@ export function useWebSocket({
   enabled = true,
 }: UseWebSocketOptions): WSState {
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectCount = useRef(0);
   const isMounted = useRef(true);
   const onEventRef = useRef(onEvent);
@@ -132,7 +132,10 @@ export function useWebSocket({
     connect();
     return () => {
       isMounted.current = false;
-      clearTimeout(reconnectTimer.current);
+      if (reconnectTimer.current !== null) {
+        clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
       wsRef.current?.close(1000, "component unmounted");
     };
   }, [connect]);

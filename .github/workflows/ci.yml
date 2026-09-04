@@ -99,7 +99,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: web/package-lock.json
 
@@ -196,7 +196,6 @@ jobs:
                   key, value = line.split("=", 1)
                   values[key] = value
 
-          # Keep DEMO_MODE true to prove that PILOT_MODE takes precedence.
           values["DEMO_MODE"] = "true"
           values["PILOT_MODE"] = "true"
           path.write_text("\n".join(f"{key}={value}" for key, value in values.items()) + "\n")

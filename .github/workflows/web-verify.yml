@@ -37,6 +37,10 @@ jobs:
       - name: Install and synchronize lockfile
         run: npm install --ignore-scripts
 
+      - name: Dependency audit report
+        shell: bash
+        run: npm audit || true
+
       - name: Type check
         run: npm run type-check
 

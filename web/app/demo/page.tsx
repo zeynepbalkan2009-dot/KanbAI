@@ -1,70 +1,379 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowLeft,
+  Bell,
+  Camera,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  CircleDot,
+  Database,
+  Filter,
+  Gauge,
+  ImageIcon,
+  LayoutDashboard,
+  Menu,
+  MoreHorizontal,
+  RefreshCw,
+  Search,
+  Settings,
+  ShieldCheck,
+  SlidersHorizontal,
+  Upload,
+  Users,
+  WifiOff,
+  X,
+  XCircle,
+} from "lucide-react";
 
-const steps = ["Capture", "AI Analysis", "Human Review", "Decision"];
+const demoRows = [
+  { id: "IN-01048", time: "11:42", station: "Housing · Station 02", line: "Line 2", result: "PASS", confidence: "98.4%", issue: "—" },
+  { id: "IN-01047", time: "11:41", station: "Housing · Station 02", line: "Line 2", result: "REVIEW", confidence: "82.6%", issue: "Surface anomaly" },
+  { id: "IN-01046", time: "11:39", station: "Surface · Station 01", line: "Line 1", result: "PASS", confidence: "96.8%", issue: "—" },
+  { id: "IN-01045", time: "11:36", station: "Assembly · Station 03", line: "Line 3", result: "FAIL", confidence: "94.2%", issue: "Missing component" },
+  { id: "IN-01044", time: "11:34", station: "Surface · Station 01", line: "Line 1", result: "PASS", confidence: "97.1%", issue: "—" },
+];
 
-export default function DemoPage() {
-  const [step, setStep] = useState(0);
-  const [threshold, setThreshold] = useState(90);
-  const [image, setImage] = useState(false);
-  const [decision, setDecision] = useState<"approved" | "reinspect" | null>(null);
+const queueRows = [
+  { id: "IN-01047", issue: "Surface anomaly", station: "Housing · Station 02", confidence: "82.6%", age: "1 min" },
+  { id: "IN-01043", issue: "Edge inconsistency", station: "Surface · Station 01", confidence: "79.8%", age: "5 min" },
+  { id: "IN-01039", issue: "Possible scratch", station: "Housing · Station 02", confidence: "76.4%", age: "11 min" },
+];
 
-  const confidence = threshold >= 90 ? 97.4 : 83.6;
-  const result = confidence >= threshold ? "PASS" : "REVIEW";
+function StatusBadge({ status }: { status: string }) {
+  const styles =
+    status === "PASS"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : status === "FAIL"
+        ? "border-red-200 bg-red-50 text-red-700"
+        : "border-amber-200 bg-amber-50 text-amber-700";
 
-  const useSample = () => { setImage(true); setStep(1); setDecision(null); };
-  const runAI = () => { setStep(2); setDecision(null); };
-  const decide = (value: "approved" | "reinspect") => { setDecision(value); setStep(3); };
+  const Icon = status === "PASS" ? CheckCircle2 : status === "FAIL" ? XCircle : AlertTriangle;
 
   return (
-    <main className="min-h-screen bg-[#07090d] text-white">
-      <header className="border-b border-white/10 bg-[#090c11] px-5 py-4">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div><div className="text-xl font-bold">KanbAI</div><div className="text-[11px] text-gray-500">AI QUALITY INTELLIGENCE</div></div>
-          <div className="flex items-center gap-3"><span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-[10px] font-bold tracking-wider text-cyan-300">LIVE PRODUCT DEMO</span><Link href="/" className="text-xs text-gray-500 hover:text-white">Website</Link></div>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${styles}`}>
+      <Icon className="h-3 w-3" /> {status}
+    </span>
+  );
+}
+
+export default function DemoPage() {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [selectedView, setSelectedView] = useState<"overview" | "review">("overview");
+  const [threshold, setThreshold] = useState(88);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isObjectUrl, setIsObjectUrl] = useState(false);
+  const [analysisRun, setAnalysisRun] = useState(false);
+  const [decision, setDecision] = useState<"approved" | "failed" | "reinspect" | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (isObjectUrl && imageUrl) URL.revokeObjectURL(imageUrl);
+    };
+  }, [imageUrl, isObjectUrl]);
+
+  const confidence = 82.6;
+  const aiResult = confidence >= threshold ? "PASS" : "REVIEW";
+
+  const loadSample = () => {
+    if (isObjectUrl && imageUrl) URL.revokeObjectURL(imageUrl);
+    setImageUrl("/marketing/hero-factory.png");
+    setIsObjectUrl(false);
+    setAnalysisRun(false);
+    setDecision(null);
+  };
+
+  const handleUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (isObjectUrl && imageUrl) URL.revokeObjectURL(imageUrl);
+    const nextUrl = URL.createObjectURL(file);
+    setImageUrl(nextUrl);
+    setIsObjectUrl(true);
+    setAnalysisRun(false);
+    setDecision(null);
+  };
+
+  const runInspection = () => {
+    if (!imageUrl) return;
+    setAnalysisRun(true);
+    setDecision(null);
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-100 text-slate-900 selection:bg-blue-100">
+      <div className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-amber-950">
+        <div className="mx-auto flex max-w-[1500px] items-start justify-center gap-2 text-xs leading-5 sm:items-center">
+          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 sm:mt-0" />
+          <p>
+            <strong>Interactive frontend demo.</strong> Backend API, database persistence, real AI inference service and factory camera ingestion are <strong>not connected on this public page.</strong> All values and outcomes below are simulated and reset when the page reloads.
+          </p>
+        </div>
+      </div>
+
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setMobileNavOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 lg:hidden" aria-label="Open navigation">
+              <Menu className="h-4 w-4" />
+            </button>
+            <Link href="/" className="flex items-center gap-2.5">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-200"><CircleDot className="h-5 w-5" /></span>
+              <div>
+                <p className="text-base font-extrabold tracking-[-0.03em] text-slate-950">Kanb<span className="text-blue-600">AI</span></p>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">Quality workspace</p>
+              </div>
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="hidden rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-bold text-amber-700 sm:inline-flex">BACKEND DISCONNECTED</span>
+            <button className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-500"><Search className="h-4 w-4" /></button>
+            <button className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-500"><Bell className="h-4 w-4" /></button>
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-slate-900 text-xs font-bold text-white">ZB</span>
+          </div>
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-5 py-8">
-        <div className="mb-6 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-4">
-          <div className="flex items-start gap-3"><div className="mt-0.5 rounded-md bg-amber-400/15 px-2 py-1 text-[9px] font-bold tracking-wider text-amber-300">SIMULATED DATA</div><div><div className="text-sm font-semibold text-white">Demo Environment — Not Connected to Backend</div><p className="mt-1 max-w-4xl text-xs leading-5 text-gray-400">This interactive demo runs entirely in the browser and is <span className="font-semibold text-gray-300">not connected to KanbAI&apos;s production backend or any real factory system</span>. All inspection results, AI confidence scores, camera feeds, metrics and decisions are simulated for demonstration purposes only and should not be interpreted as real production data.</p></div></div>
-        </div>
-
-        <div className="mb-7">
-          <div className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">Simulated factory environment</div>
-          <div className="mt-2 flex flex-col justify-between gap-3 md:flex-row md:items-end"><div><h1 className="text-3xl font-bold md:text-4xl">AI Visual Inspection</h1><p className="mt-2 max-w-2xl text-sm text-gray-400">See the complete quality-control loop: capture → AI detection → human verification → production decision.</p></div><div className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] text-gray-500">SIMULATION · NO REAL FACTORY DATA</div></div>
-        </div>
-
-        <div className="mb-5 grid grid-cols-4 overflow-hidden rounded-xl border border-white/10 bg-[#0d1118]">
-          {steps.map((name, i) => <button key={name} onClick={() => i <= step && setStep(i)} className={`relative px-2 py-4 text-center text-xs transition ${i === step ? "bg-cyan-400/10 text-cyan-300" : i < step ? "text-emerald-300" : "text-gray-600"}`}><span className="mx-auto mb-1 flex h-6 w-6 items-center justify-center rounded-full border border-current text-[10px] font-bold">{i < step ? "✓" : i + 1}</span><span className="hidden sm:block">{name}</span>{i === step && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" />}</button>)}
-        </div>
-
-        <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]">
-          <div className="rounded-2xl border border-white/10 bg-[#0d1118] p-5">
-            <div className="flex items-center justify-between"><div><div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Step 01</div><h2 className="mt-1 text-lg font-semibold">Capture product</h2></div><span className="rounded-md bg-white/5 px-2 py-1 text-[10px] text-gray-500">CAMERA 07</span></div>
-            <div className="mt-5 flex aspect-[16/9] items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-slate-800 via-slate-900 to-black">{image ? <div className="relative h-48 w-64 rounded-xl border border-cyan-400/50 bg-slate-700/30 shadow-2xl"><div className="absolute left-8 top-7 h-32 w-48 rounded-lg border-2 border-cyan-300/80" /><div className="absolute left-8 top-3 rounded bg-cyan-400 px-2 py-1 text-[9px] font-bold text-black">PRODUCT DETECTED</div><div className="absolute bottom-3 left-3 text-[9px] text-cyan-200">Housing A · frame 10483</div></div> : <div className="text-center"><div className="mx-auto flex h-24 w-32 items-center justify-center rounded-xl border border-dashed border-white/20 bg-white/[0.02]"><div className="h-10 w-14 rounded border border-gray-500" /></div><p className="mt-3 text-xs text-gray-500">No image captured</p></div>}</div>
-            <div className="mt-4 flex flex-wrap gap-2"><label className="cursor-pointer rounded-lg bg-white px-4 py-2.5 text-xs font-bold text-black">Take / Upload Photo<input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { if (e.target.files?.[0]) useSample(); }} /></label><button onClick={useSample} className="rounded-lg border border-white/10 px-4 py-2.5 text-xs font-semibold text-gray-300 hover:bg-white/5">Use sample image</button></div>
-            <p className="mt-3 text-[10px] text-gray-600">In the real product, this frame would arrive from an industrial camera. This public demo uses simulated data only.</p>
+      <div className="mx-auto grid max-w-[1500px] lg:grid-cols-[230px_1fr]">
+        <aside className="hidden min-h-[calc(100vh-106px)] border-r border-slate-200 bg-white p-4 lg:block">
+          <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Workspace</p>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <div className="min-w-0"><p className="truncate text-xs font-bold text-slate-800">Factory A · Demo</p><p className="mt-0.5 text-[10px] text-slate-400">Sample environment</p></div>
+              <ChevronDown className="h-4 w-4 text-slate-400" />
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-[#0d1118] p-5">
-            <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Step 02</div><h2 className="mt-1 text-lg font-semibold">Configure AI inspection</h2><p className="mt-2 text-xs text-gray-500">Choose how strict the inspection model should be.</p>
-            <div className="mt-7 rounded-xl border border-white/10 bg-black/20 p-5"><div className="flex items-end justify-between"><div><div className="text-[10px] uppercase tracking-wider text-gray-500">Confidence threshold</div><div className="mt-2 text-4xl font-bold">{threshold}%</div></div><div className="text-right text-[10px] text-gray-600">Sensitivity<br /><span className="text-cyan-300">{threshold < 80 ? "High" : threshold < 92 ? "Balanced" : "Strict"}</span></div></div><input type="range" min="60" max="99" value={threshold} onChange={(e) => setThreshold(Number(e.target.value))} className="mt-7 w-full accent-cyan-400" /><div className="mt-2 flex justify-between text-[9px] text-gray-600"><span>Catch more defects</span><span>Reduce false positives</span></div></div>
-            <button disabled={!image} onClick={runAI} className="mt-4 w-full rounded-lg bg-cyan-400 py-3 text-xs font-bold text-black disabled:opacity-25">Run AI inspection</button>
-            <div className="mt-4 grid grid-cols-3 gap-2 text-center"><div className="rounded-lg bg-white/[0.03] p-3"><div className="text-lg font-bold">42ms</div><div className="text-[9px] text-gray-600">Inference</div></div><div className="rounded-lg bg-white/[0.03] p-3"><div className="text-lg font-bold">v2.4.1</div><div className="text-[9px] text-gray-600">Model</div></div><div className="rounded-lg bg-white/[0.03] p-3"><div className="text-lg font-bold">YOLO</div><div className="text-[9px] text-gray-600">Vision</div></div></div>
+          <nav className="grid gap-1 text-sm font-medium text-slate-600">
+            <button onClick={() => setSelectedView("overview")} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-left ${selectedView === "overview" ? "bg-blue-50 font-semibold text-blue-700" : "hover:bg-slate-50"}`}><LayoutDashboard className="h-4 w-4" /> Overview</button>
+            <button className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-slate-50"><Camera className="h-4 w-4" /> Inspections</button>
+            <button onClick={() => setSelectedView("review")} className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-left ${selectedView === "review" ? "bg-blue-50 font-semibold text-blue-700" : "hover:bg-slate-50"}`}><span className="flex items-center gap-3"><ShieldCheck className="h-4 w-4" /> Review queue</span><span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">3</span></button>
+            <button className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-slate-50"><Activity className="h-4 w-4" /> Quality trends</button>
+            <button className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-slate-50"><Gauge className="h-4 w-4" /> Stations</button>
+            <button className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-slate-50"><Users className="h-4 w-4" /> Team</button>
+          </nav>
+
+          <div className="mt-6 border-t border-slate-200 pt-4">
+            <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-600 hover:bg-slate-50"><Settings className="h-4 w-4" /> Settings</button>
+            <Link href="/" className="mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"><ArrowLeft className="h-4 w-4" /> Back to website</Link>
           </div>
-        </div>
 
-        {step >= 2 && <div className="mt-5 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-5"><div className="flex items-center justify-between"><div><div className="text-xs font-semibold uppercase tracking-wider text-cyan-300">Step 03</div><h2 className="mt-1 text-lg font-semibold">AI analysis</h2></div><span className={`rounded-full px-3 py-1 text-[10px] font-bold ${result === "PASS" ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>{result}</span></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-4"><div className="text-[9px] uppercase text-gray-500">Confidence</div><div className="mt-1 text-3xl font-bold">{confidence}%</div></div><div className="rounded-xl bg-black/20 p-4"><div className="text-[9px] uppercase text-gray-500">Threshold</div><div className="mt-1 text-3xl font-bold">{threshold}%</div></div></div><div className="mt-3 rounded-xl bg-black/20 p-4"><div className="flex justify-between text-xs"><span className="text-gray-400">Detection</span><span className="font-semibold">{result === "PASS" ? "No visible defect" : "Surface anomaly"}</span></div><div className="mt-3 h-2 rounded-full bg-white/10"><div className="h-full rounded-full bg-cyan-400" style={{ width: `${confidence}%` }} /></div></div></div><div className="rounded-2xl border border-white/10 bg-[#0d1118] p-5"><div className="flex items-center justify-between"><div><div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Step 04</div><h2 className="mt-1 text-lg font-semibold">Human review</h2></div><span className="rounded-md border border-amber-400/20 bg-amber-400/5 px-2 py-1 text-[9px] text-amber-300">HUMAN-IN-THE-LOOP</span></div><p className="mt-3 text-xs leading-5 text-gray-400">AI provides the recommendation. An operator reviews the evidence and makes the final quality decision.</p><div className="mt-5 grid grid-cols-2 gap-3"><button onClick={() => decide("approved")} className={`rounded-lg border py-3 text-xs font-bold ${decision === "approved" ? "border-emerald-400 bg-emerald-400/10 text-emerald-300" : "border-white/10 text-gray-300 hover:bg-white/5"}`}>✓ Approve</button><button onClick={() => decide("reinspect")} className={`rounded-lg border py-3 text-xs font-bold ${decision === "reinspect" ? "border-amber-400 bg-amber-400/10 text-amber-300" : "border-white/10 text-gray-300 hover:bg-white/5"}`}>↻ Reinspect</button></div>{decision && <div className="mt-4 rounded-lg bg-white/[0.03] p-3 text-xs text-gray-400">Final decision: <span className="font-bold text-white">{decision === "approved" ? "APPROVED FOR PRODUCTION" : "SENT FOR REINSPECTION"}</span></div>}</div></div>}
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <div className="flex items-center gap-2 text-amber-800"><WifiOff className="h-4 w-4" /><span className="text-[10px] font-bold uppercase tracking-[0.12em]">Demo mode</span></div>
+            <p className="mt-2 text-[10px] leading-4 text-amber-800/80">No server requests are sent from this public demo. Data exists only in this browser session.</p>
+          </div>
+        </aside>
 
-        <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["Production Lines","3","Operational"],["Inspections Today","12,847","+8.4%"],["Defect Rate","1.8%","↓ 0.6%"],["Cameras Online","18 / 18","100%"]].map(([a,b,c]) => <div key={a} className="rounded-xl border border-white/10 bg-[#0d1118] p-4"><div className="text-[10px] uppercase tracking-wider text-gray-600">{a}</div><div className="mt-2 text-2xl font-bold">{b}</div><div className="mt-1 text-[10px] text-emerald-400">{c}</div></div>)}</div>
+        {mobileNavOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <button className="absolute inset-0 bg-slate-950/30" onClick={() => setMobileNavOpen(false)} aria-label="Close navigation overlay" />
+            <aside className="relative h-full w-72 bg-white p-4 shadow-xl">
+              <div className="mb-5 flex items-center justify-between"><p className="text-sm font-bold">KanbAI Demo</p><button onClick={() => setMobileNavOpen(false)} className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200"><X className="h-4 w-4" /></button></div>
+              <nav className="grid gap-1 text-sm font-medium text-slate-700">
+                <button onClick={() => { setSelectedView("overview"); setMobileNavOpen(false); }} className="flex items-center gap-3 rounded-lg bg-blue-50 px-3 py-2.5 text-blue-700"><LayoutDashboard className="h-4 w-4" /> Overview</button>
+                <button onClick={() => { setSelectedView("review"); setMobileNavOpen(false); }} className="flex items-center gap-3 rounded-lg px-3 py-2.5"><ShieldCheck className="h-4 w-4" /> Review queue</button>
+                <Link href="/" className="flex items-center gap-3 rounded-lg px-3 py-2.5"><ArrowLeft className="h-4 w-4" /> Back to website</Link>
+              </nav>
+            </aside>
+          </div>
+        )}
 
-        <div className="mt-7 grid gap-5 lg:grid-cols-2"><div className="rounded-2xl border border-white/10 bg-[#0d1118] p-5"><h2 className="font-semibold">Live line monitor</h2><p className="mt-1 text-xs text-gray-600">Simulated industrial camera feeds</p><div className="mt-4 grid grid-cols-3 gap-2">{["Line 01","Line 02","Line 03"].map((line,i)=><div key={line} className="overflow-hidden rounded-lg border border-white/10"><div className="flex aspect-video items-center justify-center bg-gradient-to-br from-slate-800 to-black"><div className="h-10 w-14 rounded border border-cyan-400/50" /></div><div className="flex justify-between p-2 text-[9px]"><span className="text-gray-500">{line}</span><span className={i===1?"text-amber-300":"text-emerald-300"}>{i===1?"DEFECT":"PASS"}</span></div></div>)}</div></div><div className="rounded-2xl border border-white/10 bg-[#0d1118] p-5"><h2 className="font-semibold">Quality intelligence</h2><div className="mt-4 space-y-2 text-xs"><div className="flex justify-between rounded-lg bg-white/[0.03] p-3"><span className="text-gray-500">Surface defects</span><span>42 today</span></div><div className="flex justify-between rounded-lg bg-white/[0.03] p-3"><span className="text-gray-500">Model confidence</span><span className="text-emerald-300">98.2%</span></div><div className="flex justify-between rounded-lg bg-white/[0.03] p-3"><span className="text-gray-500">Human reviews</span><span>186</span></div></div></div></div>
+        <section className="min-w-0 p-4 sm:p-6 lg:p-8">
+          <div className="mb-6 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-extrabold tracking-[-0.035em] text-slate-950 sm:text-3xl">{selectedView === "overview" ? "Quality operations" : "Review queue"}</h1>
+                <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700">INTERACTIVE DEMO</span>
+              </div>
+              <p className="mt-2 text-sm text-slate-500">Factory A · Sample workspace · simulated frontend data</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"><Filter className="h-3.5 w-3.5" /> All stations</button>
+              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"><SlidersHorizontal className="h-3.5 w-3.5" /> Filters</button>
+              <button onClick={() => { setAnalysisRun(false); setDecision(null); }} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"><RefreshCw className="h-3.5 w-3.5" /> Reset demo</button>
+            </div>
+          </div>
 
-        <div className="mt-7 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-5"><div className="text-sm font-semibold text-white">Demo Environment — Simulated Data</div><p className="mt-2 text-xs leading-5 text-gray-400">This interactive demo is not connected to KanbAI&apos;s production backend or any real factory system. All AI results, confidence scores, camera feeds, inspection statistics and decisions are simulated and are provided solely to demonstrate the intended product workflow.</p></div>
-      </section>
+          <div className="mb-6 rounded-xl border border-amber-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-700"><Database className="h-4 w-4" /></span>
+                <div><p className="text-sm font-bold text-slate-900">Frontend prototype — backend integration pending</p><p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500">This page demonstrates the intended KanbAI product workflow. Authentication, database storage, production camera streams, model inference endpoints, audit persistence and factory integrations are not connected here.</p></div>
+              </div>
+              <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[10px] font-bold text-amber-700">NO BACKEND CONNECTION</span>
+            </div>
+          </div>
+
+          {selectedView === "overview" ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                  ["128", "Sample inspections", "Demo data"],
+                  ["93.8%", "Sample pass rate", "Demo data"],
+                  ["3", "Open reviews", "Demo queue"],
+                  ["3 / 3", "Sample stations", "Simulated"],
+                ].map(([value, label, meta]) => (
+                  <article key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/30">
+                    <div className="flex items-start justify-between"><div><p className="text-2xl font-extrabold tracking-tight text-slate-950">{value}</p><p className="mt-1 text-xs font-semibold text-slate-600">{label}</p></div><MoreHorizontal className="h-4 w-4 text-slate-300" /></div>
+                    <p className="mt-3 text-[10px] font-medium text-slate-400">{meta}</p>
+                  </article>
+                ))}
+              </div>
+
+              <div className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
+                <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/30">
+                  <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3.5">
+                    <div><p className="text-sm font-bold text-slate-900">Inspection activity</p><p className="mt-0.5 text-[10px] text-slate-400">Sample volume · last 8 hours</p></div>
+                    <button className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">Today <ChevronDown className="h-3.5 w-3.5" /></button>
+                  </div>
+                  <div className="p-4 sm:p-5">
+                    <div className="flex h-52 items-end gap-2 border-b border-l border-slate-200 px-2 pb-0">
+                      {[34, 46, 41, 63, 55, 72, 68, 84, 76, 91, 82, 88, 73, 79, 86, 92].map((height, index) => (
+                        <div key={index} className="group relative flex-1">
+                          <div className="w-full rounded-t-sm bg-blue-500/90 transition group-hover:bg-blue-600" style={{ height: `${height * 1.7}px` }} />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex justify-between text-[9px] font-medium text-slate-400"><span>04:00</span><span>06:00</span><span>08:00</span><span>10:00</span><span>12:00</span></div>
+                  </div>
+                </article>
+
+                <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/30">
+                  <div className="flex items-center justify-between"><div><p className="text-sm font-bold text-slate-900">Station health</p><p className="mt-0.5 text-[10px] text-slate-400">Simulated connection state</p></div><span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-600"><span className="h-2 w-2 rounded-full bg-emerald-500" /> 3 online</span></div>
+                  <div className="mt-5 grid gap-3">
+                    {[
+                      ["Station 01", "Surface inspection", "Line 1", "Online"],
+                      ["Station 02", "Housing inspection", "Line 2", "Review pending"],
+                      ["Station 03", "Assembly check", "Line 3", "Online"],
+                    ].map(([name, task, line, state], index) => (
+                      <div key={name} className="rounded-lg border border-slate-200 p-3">
+                        <div className="flex items-center justify-between"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${index === 1 ? "bg-amber-500" : "bg-emerald-500"}`} /><p className="text-xs font-bold text-slate-800">{name}</p></div><span className="text-[9px] font-semibold text-slate-400">{line}</span></div>
+                        <p className="mt-1.5 text-[10px] text-slate-500">{task}</p><p className={`mt-2 text-[9px] font-semibold ${index === 1 ? "text-amber-600" : "text-emerald-600"}`}>{state}</p>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              </div>
+
+              <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/30">
+                <div className="flex flex-col justify-between gap-3 border-b border-slate-200 px-4 py-3.5 sm:flex-row sm:items-center">
+                  <div><p className="text-sm font-bold text-slate-900">Recent inspections</p><p className="mt-0.5 text-[10px] text-slate-400">Sample records generated for this demo</p></div>
+                  <div className="flex items-center gap-2"><button className="rounded-lg border border-slate-200 px-3 py-2 text-[10px] font-semibold text-slate-600">Result: All</button><button onClick={() => setSelectedView("review")} className="rounded-lg bg-slate-900 px-3 py-2 text-[10px] font-semibold text-white">Open review queue</button></div>
+                </div>
+                <div className="overflow-x-auto">
+                  <div className="min-w-[780px]">
+                    <div className="grid grid-cols-[95px_1.4fr_.7fr_.75fr_.75fr_1fr_60px] border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-[9px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                      <span>ID</span><span>Station</span><span>Line</span><span>Result</span><span>Confidence</span><span>Issue</span><span>Time</span>
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {demoRows.map((row) => (
+                        <div key={row.id} className="grid grid-cols-[95px_1.4fr_.7fr_.75fr_.75fr_1fr_60px] items-center px-4 py-3 text-[11px] text-slate-600 hover:bg-slate-50">
+                          <span className="font-semibold text-slate-500">{row.id}</span><span className="font-semibold text-slate-800">{row.station}</span><span>{row.line}</span><span><StatusBadge status={row.result} /></span><span className="font-medium">{row.confidence}</span><span>{row.issue}</span><span>{row.time}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-5 xl:grid-cols-[1.05fr_.95fr]">
+                <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/30 sm:p-5">
+                  <div className="flex flex-col justify-between gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center">
+                    <div><p className="text-sm font-bold text-slate-900">Try a sample inspection</p><p className="mt-1 text-xs text-slate-500">Runs entirely in your browser. No image is uploaded to a KanbAI server.</p></div>
+                    <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[9px] font-bold text-blue-700">CLIENT-SIDE DEMO</span>
+                  </div>
+
+                  <div className="mt-4 grid gap-4 lg:grid-cols-[1.15fr_.85fr]">
+                    <div>
+                      <div className="relative flex aspect-[16/9] items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                        {imageUrl ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={imageUrl} alt="Inspection sample" className="h-full w-full object-cover" />
+                            {analysisRun && <div className="absolute inset-[12%] rounded-lg border-2 border-amber-400 shadow-[0_0_0_999px_rgba(15,23,42,0.12)]"><span className="absolute -top-7 left-0 rounded bg-amber-500 px-2 py-1 text-[9px] font-bold text-white">SIMULATED DETECTION · SURFACE REGION</span></div>}
+                          </>
+                        ) : (
+                          <div className="text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-white text-slate-400 shadow-sm"><ImageIcon className="h-5 w-5" /></span><p className="mt-3 text-xs font-semibold text-slate-600">No image selected</p><p className="mt-1 text-[10px] text-slate-400">Use the sample or choose a local image.</p></div>
+                        )}
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2.5 text-xs font-semibold text-white hover:bg-blue-700"><Upload className="h-3.5 w-3.5" /> Choose image<input type="file" accept="image/*" className="hidden" onChange={handleUpload} /></label>
+                        <button onClick={loadSample} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3.5 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"><Camera className="h-3.5 w-3.5" /> Use sample</button>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center justify-between"><p className="text-xs font-bold text-slate-800">Inspection rule</p><span className="text-[9px] font-semibold text-slate-400">Sample model</span></div>
+                      <div className="mt-5 flex items-end justify-between"><div><p className="text-[9px] font-bold uppercase tracking-[0.08em] text-slate-400">Review threshold</p><p className="mt-1 text-3xl font-extrabold text-slate-950">{threshold}%</p></div><p className="text-right text-[9px] leading-4 text-slate-400">Higher threshold<br />routes more cases to review</p></div>
+                      <input type="range" min="70" max="98" value={threshold} onChange={(event) => { setThreshold(Number(event.target.value)); setAnalysisRun(false); setDecision(null); }} className="mt-5 w-full accent-blue-600" />
+                      <button disabled={!imageUrl} onClick={runInspection} className="mt-5 w-full rounded-lg bg-slate-900 px-4 py-3 text-xs font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30">Run simulated inspection</button>
+                      <p className="mt-3 text-[9px] leading-4 text-slate-400">No model endpoint is called. The result below is deterministic demo logic used only to illustrate the workflow.</p>
+                    </div>
+                  </div>
+                </article>
+
+                <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-200/30 sm:p-5">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-4"><div><p className="text-sm font-bold text-slate-900">Inspection result</p><p className="mt-1 text-xs text-slate-500">AI recommendation → human decision</p></div>{analysisRun ? <StatusBadge status={aiResult} /> : <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold text-slate-400">WAITING</span>}</div>
+
+                  {!analysisRun ? (
+                    <div className="grid min-h-64 place-items-center text-center"><div><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-slate-400"><Activity className="h-5 w-5" /></span><p className="mt-3 text-sm font-semibold text-slate-700">Run a sample inspection</p><p className="mt-1 max-w-xs text-xs leading-5 text-slate-400">Choose an image and run the browser-only simulation to see the review flow.</p></div></div>
+                  ) : (
+                    <div className="pt-4">
+                      <div className="grid grid-cols-2 gap-3"><div className="rounded-lg bg-slate-50 p-3"><p className="text-[9px] font-bold uppercase text-slate-400">Demo confidence</p><p className="mt-1 text-2xl font-extrabold text-slate-900">{confidence}%</p></div><div className="rounded-lg bg-slate-50 p-3"><p className="text-[9px] font-bold uppercase text-slate-400">Rule threshold</p><p className="mt-1 text-2xl font-extrabold text-slate-900">{threshold}%</p></div></div>
+                      <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold text-amber-900">Surface anomaly</p><p className="mt-1 text-[10px] leading-4 text-amber-800/80">Sample detection for demonstrating the operator review step.</p></div><AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" /></div></div>
+                      <div className="mt-4"><p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">Human decision</p><div className="mt-2 grid grid-cols-3 gap-2"><button onClick={() => setDecision("approved")} className={`rounded-lg border px-2 py-2.5 text-[10px] font-bold ${decision === "approved" ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}><Check className="mx-auto mb-1 h-3.5 w-3.5" />Approve</button><button onClick={() => setDecision("failed")} className={`rounded-lg border px-2 py-2.5 text-[10px] font-bold ${decision === "failed" ? "border-red-300 bg-red-50 text-red-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}><X className="mx-auto mb-1 h-3.5 w-3.5" />Fail</button><button onClick={() => setDecision("reinspect")} className={`rounded-lg border px-2 py-2.5 text-[10px] font-bold ${decision === "reinspect" ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}><RefreshCw className="mx-auto mb-1 h-3.5 w-3.5" />Reinspect</button></div></div>
+                      {decision && <div className="mt-3 rounded-lg bg-slate-900 px-3 py-3 text-xs text-white"><span className="text-slate-400">Demo final decision: </span><strong>{decision === "approved" ? "APPROVED" : decision === "failed" ? "FAILED" : "REINSPECTION REQUESTED"}</strong><p className="mt-1 text-[9px] font-normal leading-4 text-slate-400">In a connected deployment this action would be persisted with user, timestamp, evidence and production context.</p></div>}
+                    </div>
+                  )}
+                </article>
+              </div>
+            </>
+          ) : (
+            <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
+              <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/30">
+                <div className="flex flex-col justify-between gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-center"><div><p className="text-sm font-bold text-slate-900">Cases requiring operator review</p><p className="mt-1 text-xs text-slate-500">Sample queue · browser-only demo</p></div><button className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600">Oldest first</button></div>
+                <div className="divide-y divide-slate-100">
+                  {queueRows.map((row, index) => (
+                    <div key={row.id} className={`p-4 sm:p-5 ${index === 0 ? "bg-blue-50/40" : ""}`}>
+                      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                        <div className="flex min-w-0 items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-amber-50 text-amber-600"><AlertTriangle className="h-4 w-4" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-bold text-slate-900">{row.issue}</p><StatusBadge status="REVIEW" /></div><p className="mt-1 text-xs text-slate-500">{row.id} · {row.station}</p><p className="mt-1 text-[10px] text-slate-400">Demo confidence {row.confidence} · waiting {row.age}</p></div></div>
+                        <button onClick={() => { setSelectedView("overview"); loadSample(); }} className="shrink-0 rounded-lg bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white">Review case</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/30">
+                <p className="text-sm font-bold text-slate-900">How the production version differs</p>
+                <p className="mt-2 text-xs leading-5 text-slate-500">The public demo intentionally stops at the frontend interaction layer.</p>
+                <div className="mt-5 grid gap-3">
+                  {[
+                    ["Camera ingestion", "Not connected", false],
+                    ["Inference API", "Not connected", false],
+                    ["Database & audit trail", "Not connected", false],
+                    ["Operator workflow UI", "Demonstrated", true],
+                    ["Review decisions", "Browser-only", true],
+                  ].map(([name, state, shown]) => (
+                    <div key={name as string} className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 px-3 py-3"><span className="text-xs font-semibold text-slate-700">{name as string}</span><span className={`inline-flex items-center gap-1.5 text-[10px] font-bold ${shown ? "text-blue-600" : "text-amber-600"}`}>{shown ? <CheckCircle2 className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}{state as string}</span></div>
+                  ))}
+                </div>
+              </article>
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-4 sm:flex-row sm:items-center">
+            <div><p className="text-xs font-bold text-slate-800">About this demo</p><p className="mt-1 text-[10px] leading-4 text-slate-400">UI behavior is implemented client-side to show how KanbAI is intended to operate. It does not demonstrate real production accuracy, throughput, factory connectivity or backend persistence.</p></div>
+            <Link href="/" className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold text-blue-600"><ArrowLeft className="h-3.5 w-3.5" /> Back to KanbAI website</Link>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

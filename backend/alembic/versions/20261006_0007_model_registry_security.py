@@ -26,6 +26,15 @@ def upgrade() -> None:
     op.create_foreign_key("fk_ai_models_factory", "ai_models", "factories", ["factory_id"], ["id"])
     op.create_index("ix_aimodels_factory_version", "ai_models", ["factory_id", "name", "version"])
     op.create_unique_constraint("uq_aimodels_factory_name_version", "ai_models", ["factory_id", "name", "version"])
+    # Preserve deterministic identity for legacy rows that predate tenant scoping.
+    # New secure registrations always require a non-null factory_id.
+    op.create_index(
+        "uq_aimodels_legacy_name_version",
+        "ai_models",
+        ["name", "version"],
+        unique=True,
+        postgresql_where=sa.text("factory_id IS NULL"),
+    )
 
     op.add_column("model_deployments", sa.Column("deployment_status", sa.String(length=30), server_default="active", nullable=False))
     op.add_column("model_deployments", sa.Column("artifact_sha256", sa.String(length=64), nullable=True))
@@ -44,6 +53,7 @@ def downgrade() -> None:
     op.drop_column("model_deployments", "deployment_reason")
     op.drop_column("model_deployments", "artifact_sha256")
     op.drop_column("model_deployments", "deployment_status")
+    op.drop_index("uq_aimodels_legacy_name_version", table_name="ai_models")
     op.drop_constraint("uq_aimodels_factory_name_version", "ai_models", type_="unique")
     op.create_unique_constraint("uq_model_name_version", "ai_models", ["name", "version"])
     op.drop_index("ix_aimodels_factory_version", table_name="ai_models")

@@ -216,6 +216,77 @@ async def activate_device(body: DeviceActivateIn, db: AsyncSession = Depends(get
     return device
 
 
+@router.post("/{device_id}/sync", response_model=EdgeSyncAck)
+async def sync_device_events(
+    device_id: str,
+    body: EdgeSyncBatchIn,
+    x_kanbai_device_token: Optional[str] = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Authenticated, idempotent Edge -> Cloud event ingress."""
+    if not settings.edge_sync_enabled:
+        raise ValidationError("Edge sync is disabled")
+    if len(body.events) > settings.edge_sync_batch_max:
+        raise ValidationError("Sync batch exceeds configured maximum")
+
+    try:
+        device_uuid = uuid.UUID(device_id)
+    except ValueError as exc:
+        raise ValidationError("Invalid device id") from exc
+
+    device = await db.get(Device, device_uuid)
+    if not device or not device.is_active or device.status == "revoked":
+        raise UnauthorizedError("Device is inactive or revoked")
+
+    if settings.edge_device_auth_enabled:
+        if not x_kanbai_device_token or not device.device_credential_hash:
+            raise UnauthorizedError("Device credential required")
+        if device.credential_revoked_at is not None:
+            raise UnauthorizedError("Device credential revoked")
+        if not verify_device_token(x_kanbai_device_token, device.device_credential_hash):
+            raise UnauthorizedError("Invalid device credential")
+
+    accepted: list[str] = []
+    duplicates: list[str] = []
+    now = datetime.now(timezone.utc)
+
+    for event in body.events:
+        if len(event.event_id) > 120 or len(event.event_type) > 80:
+            raise ValidationError("Edge event id or type is too long")
+        payload_size = len(event.model_dump_json().encode("utf-8"))
+        if payload_size > settings.edge_event_max_payload_bytes:
+            raise ValidationError("Edge event payload exceeds configured maximum")
+
+        existing = await db.execute(
+            select(EdgeSyncEvent).where(
+                EdgeSyncEvent.factory_id == device.factory_id,
+                EdgeSyncEvent.event_id == event.event_id,
+            )
+        )
+        if existing.scalar_one_or_none():
+            duplicates.append(event.event_id)
+            continue
+
+        db.add(EdgeSyncEvent(
+            id=uuid.uuid4(),
+            factory_id=device.factory_id,
+            device_id=device.id,
+            event_id=event.event_id,
+            event_type=event.event_type,
+            payload=event.payload,
+            payload_sha256=sha256_json(event.payload),
+            status="received",
+            attempts=0,
+            available_at=now,
+        ))
+        accepted.append(event.event_id)
+
+    device.last_seen_at = now
+    device.status = "online"
+    await db.flush()
+    return EdgeSyncAck(accepted=accepted, duplicates=duplicates)
+
+
 @router.post("/{device_id}/heartbeat", response_model=DeviceOut)
 async def post_device_heartbeat(
     device_id: str,

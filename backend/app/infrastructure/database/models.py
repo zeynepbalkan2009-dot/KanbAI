@@ -163,7 +163,6 @@ class AIModel(Base):
     artifact_sha256: Mapped[Optional[str]] = mapped_column(String(64))
     artifact_signature: Mapped[Optional[str]] = mapped_column(Text)
     signature_algorithm: Mapped[Optional[str]] = mapped_column(String(40))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     retired_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 

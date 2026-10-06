@@ -103,8 +103,8 @@ jobs:
           python-version: "3.11"
       - name: Install test dependencies
         run: pip install --disable-pip-version-check pytest==8.2.0
-      - name: Run offline Edge tests
-        run: pytest -q tests/test_edge_outbox.py
+      - name: Run Edge and model security tests
+        run: pytest -q tests/test_edge_outbox.py tests/test_model_security.py
 
   web:
     name: Web type-check and build

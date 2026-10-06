@@ -21,6 +21,9 @@ def upgrade() -> None:
     op.add_column("ai_models", sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False))
     op.add_column("ai_models", sa.Column("approved_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("ai_models", sa.Column("retired_at", sa.DateTime(timezone=True), nullable=True))
+    # Replace the legacy global uniqueness rule with factory-scoped identity.
+    # A model version must never be shared implicitly across factory tenants.
+    op.drop_constraint("uq_model_name_version", "ai_models", type_="unique")
     op.create_foreign_key("fk_ai_models_factory", "ai_models", "factories", ["factory_id"], ["id"])
     op.create_index("ix_aimodels_factory_version", "ai_models", ["factory_id", "name", "version"])
     op.create_unique_constraint("uq_aimodels_factory_name_version", "ai_models", ["factory_id", "name", "version"])
@@ -43,6 +46,7 @@ def downgrade() -> None:
     op.drop_column("model_deployments", "artifact_sha256")
     op.drop_column("model_deployments", "deployment_status")
     op.drop_constraint("uq_aimodels_factory_name_version", "ai_models", type_="unique")
+    op.create_unique_constraint("uq_model_name_version", "ai_models", ["name", "version"])
     op.drop_index("ix_aimodels_factory_version", table_name="ai_models")
     op.drop_constraint("fk_ai_models_factory", "ai_models", type_="foreignkey")
     op.drop_column("ai_models", "retired_at")

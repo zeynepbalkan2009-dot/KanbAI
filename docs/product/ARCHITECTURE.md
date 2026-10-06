@@ -63,3 +63,8 @@ Production model changes are fail-closed and never autonomous:
 Factory model artifacts are stored under factory-scoped private keys. A production candidate must carry a valid signature bound to the factory, model name, version, and artifact hash. Candidate metrics must pass configured quality thresholds before deployment. The first health gate verifies the private artifact exists and its stored integrity metadata matches the registered SHA-256; future Edge runtimes can add inference-level readiness and canary checks without weakening this gate.
 
 A failed health check marks the candidate deployment as rolled back and restores the previously active factory deployment. Continuous learning therefore produces candidates, not uncontrolled production model mutations.
+
+
+## Secure Deployment Integrity Check
+
+The deployment health gate verifies both the private object metadata and the SHA-256 digest of the stored artifact bytes. Metadata alone is not treated as proof of integrity.

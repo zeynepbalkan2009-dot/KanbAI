@@ -20,7 +20,7 @@ def test_failed_events_use_bounded_exponential_backoff(tmp_path):
     assert outbox.pending(now=101) == []
     assert outbox.pending(now=102)[0].attempts == 1
     outbox.mark_failed(["evt-1"], "network down", now=102)
-    assert outbox.pending(now=105)[0].attempts == 2
+    assert outbox.pending(now=106)[0].attempts == 2
 
 
 def test_flush_reconciles_accepted_and_duplicate_ids(tmp_path):

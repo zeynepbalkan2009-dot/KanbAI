@@ -15,7 +15,6 @@ from app.infrastructure.database.session import get_db
 from app.core.exceptions import NotFoundError, ConflictError, UnauthorizedError, ValidationError
 from app.core.config import get_settings
 from app.core.edge_security import issue_device_token, verify_device_token, sha256_json
-from app.infrastructure.database.models import EdgeSyncEvent
 
 settings = get_settings()
 
@@ -120,6 +119,7 @@ async def register_device(
     if existing.scalar_one_or_none():
         raise ConflictError("Device UUID already registered")
 
+    raw_device_token, device_token_hash = issue_device_token()
     device = Device(
         id=uuid.uuid4(),
         factory_id=uuid.UUID(current.tenant_id),
@@ -129,10 +129,14 @@ async def register_device(
         station_id=body.station_id,
         status="active",
         activated_at=datetime.now(timezone.utc),
+        device_credential_hash=device_token_hash,
+        credential_issued_at=datetime.now(timezone.utc),
     )
     db.add(device)
     await db.flush()
-    return device
+    result = DeviceOut.model_validate(device)
+    result.device_credential = raw_device_token
+    return result
 
 
 @router.post("/activation-token", response_model=ActivationTokenOut, status_code=201)
@@ -181,9 +185,23 @@ async def activate_device(body: DeviceActivateIn, db: AsyncSession = Depends(get
     device = existing.scalar_one_or_none()
     if device and device.factory_id != token.factory_id:
         raise ConflictError("Device UUID already registered for another factory")
+    raw_device_token, device_token_hash = issue_device_token()
     if not device:
-        raw_device_token, device_token_hash = issue_device_token()\n    device = Device(id=uuid.uuid4(), factory_id=token.factory_id, device_uuid=body.device_uuid, name=body.name, location_label=body.location_label, station_id=token.station_id, device_credential_hash=device_token_hash, credential_issued_at=now)
+        device = Device(
+            id=uuid.uuid4(),
+            factory_id=token.factory_id,
+            device_uuid=body.device_uuid,
+            name=body.name,
+            location_label=body.location_label,
+            station_id=token.station_id,
+            device_credential_hash=device_token_hash,
+            credential_issued_at=now,
+        )
         db.add(device)
+    else:
+        device.device_credential_hash = device_token_hash
+        device.credential_issued_at = now
+        device.credential_revoked_at = None
     device.name = body.name
     device.location_label = body.location_label or device.location_label
     device.station_id = token.station_id or device.station_id

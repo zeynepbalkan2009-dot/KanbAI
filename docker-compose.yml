@@ -63,7 +63,7 @@ services:
 
   # â”€â”€ MinIO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/aistor/minio:RELEASE.2026-09-19T17-05-25Z
     container_name: qc_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -85,7 +85,7 @@ services:
 
   # â”€â”€ MinIO bucket init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   minio-init:
-    image: minio/mc:latest
+    image: quay.io/minio/aistor/mc:latest
     container_name: qc_minio_init
     depends_on:
       minio:

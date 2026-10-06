@@ -31,3 +31,48 @@ def sign_model_manifest(manifest: bytes, signing_secret: bytes) -> str:
 def verify_model_manifest(manifest: bytes, signature: str, signing_secret: bytes) -> bool:
     expected = sign_model_manifest(manifest, signing_secret)
     return hmac.compare_digest(expected, signature)
+
+
+def require_signed_model(
+    manifest: bytes,
+    signature: str | None,
+    signing_secret: str,
+    *,
+    required: bool = True,
+) -> None:
+    """Fail closed when signed deployment is required but trust material is unavailable."""
+    if not required:
+        return
+    if not signing_secret:
+        raise ValueError("Model signing secret is not configured")
+    if not signature:
+        raise ValueError("Signed model artifact is required")
+    if not verify_model_manifest(manifest, signature, signing_secret.encode("utf-8")):
+        raise ValueError("Model artifact signature verification failed")
+
+
+def validate_model_metrics(
+    *,
+    map50: float | None,
+    precision: float | None,
+    recall: float | None,
+    min_map50: float,
+    min_precision: float,
+    min_recall: float,
+) -> None:
+    """Quality gate for candidate models before production deployment."""
+    missing = [
+        name
+        for name, value in (("mAP50", map50), ("precision", precision), ("recall", recall))
+        if value is None
+    ]
+    if missing:
+        raise ValueError(f"Model validation metrics missing: {', '.join(missing)}")
+    checks = (
+        ("mAP50", map50, min_map50),
+        ("precision", precision, min_precision),
+        ("recall", recall, min_recall),
+    )
+    failures = [f"{name}={value:.4f} < {threshold:.4f}" for name, value, threshold in checks if value < threshold]
+    if failures:
+        raise ValueError("Model validation gate failed: " + "; ".join(failures))

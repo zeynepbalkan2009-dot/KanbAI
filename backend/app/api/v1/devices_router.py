@@ -213,7 +213,9 @@ async def activate_device(body: DeviceActivateIn, db: AsyncSession = Depends(get
     token.used_at = now
     token.used_by_device_id = device.id
     await db.flush()
-    return device
+    result = DeviceOut.model_validate(device)
+    result.device_credential = raw_device_token
+    return result
 
 
 @router.post("/{device_id}/sync", response_model=EdgeSyncAck)
@@ -323,6 +325,7 @@ async def revoke_device(
     device.is_active = False
     device.status = "revoked"
     device.revoked_at = datetime.now(timezone.utc)
+    device.credential_revoked_at = datetime.now(timezone.utc)
     await db.flush()
     return device
 

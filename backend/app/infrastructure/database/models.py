@@ -127,6 +127,10 @@ class Device(Base):
     firmware_version: Mapped[Optional[str]] = mapped_column(String(50))
     activated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    device_credential_hash: Mapped[Optional[str]] = mapped_column(String(128), unique=True)
+    credential_issued_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    credential_revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    certificate_fingerprint: Mapped[Optional[str]] = mapped_column(String(128))
     metadata_json: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, default=dict)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
@@ -289,6 +293,34 @@ class DeviceActivationToken(Base):
     revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (Index("ix_activation_factory_expires", "factory_id", "expires_at"),)
+
+
+class EdgeSyncEvent(Base):
+    """Durable, idempotent ingress record for events sent by factory Edge agents."""
+
+    __tablename__ = "edge_sync_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    factory_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("factories.id"), nullable=False)
+    device_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("devices.id"), nullable=False)
+    event_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    payload_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), default="received", nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    available_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[Optional[str]] = mapped_column(Text)
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    factory: Mapped["Factory"] = relationship("Factory")
+    device: Mapped["Device"] = relationship("Device")
+
+    __table_args__ = (
+        UniqueConstraint("factory_id", "event_id", name="uq_edge_sync_factory_event"),
+        Index("ix_edge_sync_device_created", "device_id", "created_at"),
+        Index("ix_edge_sync_status_available", "status", "available_at"),
+    )
 
 
 class BatteryUnit(Base):

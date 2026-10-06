@@ -4,15 +4,20 @@ import uuid
 from typing import Optional
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.auth.service import get_current_user, CurrentUser, require_role
-from app.infrastructure.database.models import Device, DeviceActivationToken, Station
+from app.infrastructure.database.models import Device, DeviceActivationToken, Station, EdgeSyncEvent
 from app.infrastructure.database.session import get_db
-from app.core.exceptions import NotFoundError, ConflictError
+from app.core.exceptions import NotFoundError, ConflictError, UnauthorizedError, ValidationError
+from app.core.config import get_settings
+from app.core.edge_security import issue_device_token, verify_device_token, sha256_json
+from app.infrastructure.database.models import EdgeSyncEvent
+
+settings = get_settings()
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 
@@ -29,6 +34,7 @@ class DeviceOut(BaseModel):
     status: str = "pending"
     station_id: Optional[uuid.UUID] = None
     activated_at: Optional[datetime] = None
+    device_credential: Optional[str] = None
     created_at: datetime
     model_config = {"from_attributes": True}
 
@@ -50,6 +56,21 @@ class ActivationTokenOut(BaseModel):
     activation_token: str
     expires_at: datetime
     station_id: Optional[uuid.UUID] = None
+
+
+class EdgeSyncEventIn(BaseModel):
+    event_id: str
+    event_type: str
+    payload: dict
+
+
+class EdgeSyncBatchIn(BaseModel):
+    events: list[EdgeSyncEventIn]
+
+
+class EdgeSyncAck(BaseModel):
+    accepted: list[str]
+    duplicates: list[str]
 
 
 class DeviceActivateIn(BaseModel):
@@ -161,7 +182,7 @@ async def activate_device(body: DeviceActivateIn, db: AsyncSession = Depends(get
     if device and device.factory_id != token.factory_id:
         raise ConflictError("Device UUID already registered for another factory")
     if not device:
-        device = Device(id=uuid.uuid4(), factory_id=token.factory_id, device_uuid=body.device_uuid, name=body.name, location_label=body.location_label, station_id=token.station_id)
+        raw_device_token, device_token_hash = issue_device_token()\n    device = Device(id=uuid.uuid4(), factory_id=token.factory_id, device_uuid=body.device_uuid, name=body.name, location_label=body.location_label, station_id=token.station_id, device_credential_hash=device_token_hash, credential_issued_at=now)
         db.add(device)
     device.name = body.name
     device.location_label = body.location_label or device.location_label

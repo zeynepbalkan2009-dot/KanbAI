@@ -83,6 +83,8 @@ services:
     image: quay.io/minio/aistor/mc:latest
     container_name: qc_minio_init
     depends_on:
+      minio:
+        condition: service_started
     entrypoint: >
       /bin/sh -c "
       until mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin123} >/dev/null 2>&1 && mc ready local >/dev/null 2>&1; do
@@ -228,8 +230,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
-        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     networks:
       - qc-net
 

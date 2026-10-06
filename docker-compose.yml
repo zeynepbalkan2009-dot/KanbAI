@@ -29,7 +29,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-qcuser} -d ${POSTGRES_DB:-qcplatform}"]
       interval: 5s
@@ -52,7 +52,7 @@ services:
     volumes:
       - redisdata:/data
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispassword123}", "ping"]
       interval: 5s
@@ -73,8 +73,8 @@ services:
     volumes:
       - miniodata:/data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
@@ -96,7 +96,7 @@ services:
       mc mb --ignore-existing local/inspections;
       mc mb --ignore-existing local/models;
       mc mb --ignore-existing local/datasets;
-      mc anonymous set download local/models;
+      # Model objects remain private; access is mediated by the API/Edge deployment flow.
       echo 'MinIO buckets ready';
       "
     networks:
@@ -115,7 +115,7 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level info
     <<: *backend-env
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./backend:/app
       - ./mlops:/app/mlops
@@ -230,7 +230,7 @@ services:
     volumes:
       - ./mlops:/mlops:ro
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -255,7 +255,7 @@ services:
       --broker=${CELERY_BROKER_URL}
     <<: *backend-env
     ports:
-      - "5555:5555"
+      - "127.0.0.1:5555:5555"
     depends_on:
       - redis
     networks:
@@ -271,7 +271,7 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       api:
         condition: service_healthy

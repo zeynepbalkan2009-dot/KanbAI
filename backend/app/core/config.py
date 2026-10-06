@@ -74,6 +74,14 @@ class Settings(BaseSettings):
     # Pilot deployments use real factory data and must never create or reset demo data.
     pilot_mode: bool = False
 
+    # Secure Edge / Cloud controls. Pilot and production are fail-closed by default.
+    edge_device_auth_enabled: bool = True
+    edge_sync_enabled: bool = True
+    edge_sync_batch_max: int = 100
+    edge_event_max_payload_bytes: int = 262144
+    edge_token_clock_skew_seconds: int = 60
+    edge_require_signed_model: bool = True
+
     # Capture quality gate (image usability only; never a product quality decision)
     capture_quality_gate_enabled: bool = True
     capture_min_width: int = 640

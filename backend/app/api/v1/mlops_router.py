@@ -230,7 +230,8 @@ async def secure_deploy_model(
             "artifact_sha256": deployment.artifact_sha256,
         }
     except RuntimeError as exc:
-        await db.rollback()
+        # The service already restored the previous deployment and flushed the rollback audit trail.
+        # Keep that state committed so the failure is traceable rather than erased by a second rollback.
         raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:
         await db.rollback()

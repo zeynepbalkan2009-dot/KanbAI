@@ -166,6 +166,7 @@ class SecureModelDeploymentService:
                 ModelDeployment.is_active.is_(True),
             )
             .order_by(ModelDeployment.deployed_at.desc())
+            .with_for_update()
         )
         previous = active_result.scalars().first()
 

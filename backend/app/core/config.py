@@ -81,6 +81,11 @@ class Settings(BaseSettings):
     edge_event_max_payload_bytes: int = 262144
     edge_token_clock_skew_seconds: int = 60
     edge_require_signed_model: bool = True
+    # Signing secret is intentionally optional at config-load time; secure deployment fails closed when required but missing.
+    model_signing_secret: str = ""
+    model_validation_min_map50: float = 0.80
+    model_validation_min_precision: float = 0.80
+    model_validation_min_recall: float = 0.80
 
     # Capture quality gate (image usability only; never a product quality decision)
     capture_quality_gate_enabled: bool = True

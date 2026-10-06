@@ -52,3 +52,14 @@ Each activated Edge device receives a one-time device credential. KanbAI stores 
 The current branch establishes the security and synchronization foundation: device credential hashing, authenticated Edge event ingress, durable sync-event persistence, payload hashing, pilot/production security configuration, and reduced host exposure in Docker Compose.
 
 It does **not** yet claim mTLS, signed model deployment, full offline Edge inference runtime, federated learning, or autonomous production retraining. Those remain subsequent implementation stages.
+
+
+## Controlled Model Deployment Gate
+
+Production model changes are fail-closed and never autonomous:
+
+`artifact upload → SHA-256 → trusted signature → factory authorization → metric validation → private artifact health check → deployment → rollback on health failure`
+
+Factory model artifacts are stored under factory-scoped private keys. A production candidate must carry a valid signature bound to the factory, model name, version, and artifact hash. Candidate metrics must pass configured quality thresholds before deployment. The first health gate verifies the private artifact exists and its stored integrity metadata matches the registered SHA-256; future Edge runtimes can add inference-level readiness and canary checks without weakening this gate.
+
+A failed health check marks the candidate deployment as rolled back and restores the previously active factory deployment. Continuous learning therefore produces candidates, not uncontrolled production model mutations.

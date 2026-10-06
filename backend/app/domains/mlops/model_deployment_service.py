@@ -225,6 +225,10 @@ class SecureModelDeploymentService:
                 old_value={"model_id": str(model.id)},
                 new_value={"restored_model_id": str(previous.model_id) if previous else None},
             )
+            # The request dependency rolls back on exceptions. Commit the explicit
+            # restoration before raising so the safety rollback and audit trail
+            # cannot be erased by the HTTP 503 path.
+            await self.db.commit()
             raise RuntimeError("Model health check failed; previous production model restored")
 
         deployment.deployment_status = "active"

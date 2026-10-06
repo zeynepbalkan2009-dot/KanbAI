@@ -1,4 +1,5 @@
 import io
+import hashlib
 import uuid
 from datetime import timedelta
 from pathlib import Path
@@ -117,4 +118,18 @@ def verify_model_artifact(bucket: str, key: str, expected_sha256: str) -> bool:
     except S3Error:
         return False
     metadata = {str(k).lower(): str(v) for k, v in (stat.metadata or {}).items()}
-    return stat.size > 0 and metadata.get("x-amz-meta-sha256") == expected_sha256.lower()
+    if stat.size <= 0 or metadata.get("x-amz-meta-sha256") != expected_sha256.lower():
+        return False
+    response = None
+    try:
+        response = client.get_object(bucket, key)
+        digest = hashlib.sha256()
+        for chunk in response.stream(1024 * 1024):
+            digest.update(chunk)
+        return digest.hexdigest() == expected_sha256.lower()
+    except S3Error:
+        return False
+    finally:
+        if response is not None:
+            response.close()
+            response.release_conn()

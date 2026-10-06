@@ -25,6 +25,7 @@ class Factory(Base):
 
     users: Mapped[list["User"]] = relationship("User", back_populates="factory")
     devices: Mapped[list["Device"]] = relationship("Device", back_populates="factory")
+    ai_models: Mapped[list["AIModel"]] = relationship("AIModel", back_populates="factory")
     production_lines: Mapped[list["ProductionLine"]] = relationship("ProductionLine", back_populates="factory")
 
     __table_args__ = (Index("ix_factories_slug", "slug"), Index("ix_factories_active", "is_active"))
@@ -145,6 +146,7 @@ class AIModel(Base):
     __tablename__ = "ai_models"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    factory_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("factories.id"))
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     version: Mapped[str] = mapped_column(String(50), nullable=False)
     architecture: Mapped[str] = mapped_column(String(100), default="yolov8")
@@ -158,6 +160,14 @@ class AIModel(Base):
     is_production: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     class_labels: Mapped[Optional[dict]] = mapped_column(JSONB)
     notes: Mapped[Optional[str]] = mapped_column(Text)
+    artifact_sha256: Mapped[Optional[str]] = mapped_column(String(64))
+    artifact_signature: Mapped[Optional[str]] = mapped_column(Text)
+    signature_algorithm: Mapped[Optional[str]] = mapped_column(String(40))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    retired_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    factory: Mapped[Optional["Factory"]] = relationship("Factory", back_populates="ai_models")
 
     deployments: Mapped[list["ModelDeployment"]] = relationship(
         "ModelDeployment",
@@ -166,7 +176,7 @@ class AIModel(Base):
     )
     inspections: Mapped[list["InspectionResult"]] = relationship("InspectionResult", back_populates="model")
 
-    __table_args__ = (UniqueConstraint("name", "version", name="uq_model_name_version"), UniqueConstraint("factory_id", "name", "version", name="uq_aimodels_factory_name_version"), Index("ix_aimodels_production", "is_production"), Index("ix_aimodels_factory_version", "factory_id", "name", "version"))
+    __table_args__ = (UniqueConstraint("factory_id", "name", "version", name="uq_aimodels_factory_name_version"), Index("ix_aimodels_production", "is_production"), Index("ix_aimodels_factory_version", "factory_id", "name", "version"))
 
 
 class ModelDeployment(Base):
@@ -179,8 +189,14 @@ class ModelDeployment(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     rollback_model_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("ai_models.id"))
     retired_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    deployment_status: Mapped[str] = mapped_column(String(30), default="active", nullable=False)
+    artifact_sha256: Mapped[Optional[str]] = mapped_column(String(64))
+    deployment_reason: Mapped[Optional[str]] = mapped_column(Text)
+    deployed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    rollback_of_deployment_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("model_deployments.id"))
 
     factory: Mapped["Factory"] = relationship("Factory")
+    rollback_of_deployment: Mapped[Optional["ModelDeployment"]] = relationship("ModelDeployment", remote_side="ModelDeployment.id", foreign_keys=[rollback_of_deployment_id])
     model: Mapped["AIModel"] = relationship("AIModel", foreign_keys=[model_id], back_populates="deployments")
 
     __table_args__ = (Index("ix_deployments_factory_active", "factory_id", "is_active"), Index("ix_model_deployments_factory_status", "factory_id", "deployment_status"))

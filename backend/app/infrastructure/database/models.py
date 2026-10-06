@@ -166,7 +166,7 @@ class AIModel(Base):
     )
     inspections: Mapped[list["InspectionResult"]] = relationship("InspectionResult", back_populates="model")
 
-    __table_args__ = (UniqueConstraint("name", "version", name="uq_model_name_version"), Index("ix_aimodels_production", "is_production"))
+    __table_args__ = (UniqueConstraint("name", "version", name="uq_model_name_version"), UniqueConstraint("factory_id", "name", "version", name="uq_aimodels_factory_name_version"), Index("ix_aimodels_production", "is_production"), Index("ix_aimodels_factory_version", "factory_id", "name", "version"))
 
 
 class ModelDeployment(Base):
@@ -183,7 +183,7 @@ class ModelDeployment(Base):
     factory: Mapped["Factory"] = relationship("Factory")
     model: Mapped["AIModel"] = relationship("AIModel", foreign_keys=[model_id], back_populates="deployments")
 
-    __table_args__ = (Index("ix_deployments_factory_active", "factory_id", "is_active"),)
+    __table_args__ = (Index("ix_deployments_factory_active", "factory_id", "is_active"), Index("ix_model_deployments_factory_status", "factory_id", "deployment_status"))
 
 
 class InspectionResult(Base):

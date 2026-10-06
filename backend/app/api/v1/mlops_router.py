@@ -22,7 +22,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, File, Form, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +31,7 @@ from app.domains.auth.service import get_current_user, CurrentUser, require_role
 from app.infrastructure.database.session import get_db
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.domains.mlops.model_deployment_service import SecureModelDeploymentService
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/mlops", tags=["mlops"])
@@ -61,6 +62,10 @@ class HITLReviewRequest(BaseModel):
 class ApproveModelRequest(BaseModel):
     version_id: str
     notes: Optional[str] = None
+
+
+class SecureDeployRequest(BaseModel):
+    reason: str = "approved deployment"
 
 
 # ── Model Registry endpoints ──────────────────────────────────────────────────
@@ -126,6 +131,110 @@ async def promote_model(
         return {"promoted": True, "version": version.to_dict()}
     except Exception as e:
         raise HTTPException(400, str(e))
+
+
+# ── Secure model lifecycle ────────────────────────────────────────────────────
+
+@router.post("/models/secure-register", status_code=201)
+async def secure_register_model(
+    name: str = Form(...),
+    version: str = Form(...),
+    architecture: str = Form("onnx"),
+    accuracy_map50: float | None = Form(None),
+    precision: float | None = Form(None),
+    recall: float | None = Form(None),
+    file: UploadFile = File(...),
+    current: CurrentUser = Depends(require_role("admin", "mlops")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Register a factory-private artifact with hash/signature and private storage."""
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "Empty model artifact")
+    factory_id = uuid.UUID(current.tenant_id)
+    service = SecureModelDeploymentService(db)
+    try:
+        model = await service.register_candidate(
+            factory_id=factory_id,
+            name=name,
+            version=version,
+            artifact=data,
+            architecture=architecture,
+            accuracy_map50=accuracy_map50,
+            precision=precision,
+            recall=recall,
+            actor_id=uuid.UUID(current.user_id),
+        )
+        from app.infrastructure.storage.minio_client import upload_model_artifact
+        model.model_path = upload_model_artifact(
+            data,
+            factory_id=str(factory_id),
+            model_id=str(model.id),
+            sha256=model.artifact_sha256 or "",
+            filename=file.filename or "model.bin",
+        )
+        await db.flush()
+        return {
+            "model_id": str(model.id),
+            "factory_id": str(factory_id),
+            "name": model.name,
+            "version": model.version,
+            "artifact_sha256": model.artifact_sha256,
+            "signature_algorithm": model.signature_algorithm,
+            "status": "candidate",
+        }
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(400, str(exc)) from exc
+
+
+@router.post("/models/{model_id}/secure-deploy")
+async def secure_deploy_model(
+    model_id: str,
+    body: SecureDeployRequest,
+    current: CurrentUser = Depends(require_role("admin", "mlops")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Run signature, factory, metric and artifact-health gates before production."""
+    factory_id = uuid.UUID(current.tenant_id)
+    try:
+        model_uuid = uuid.UUID(model_id)
+    except ValueError as exc:
+        raise HTTPException(400, "Invalid model id") from exc
+
+    from app.infrastructure.storage.minio_client import verify_model_artifact
+
+    async def health_check(model) -> bool:
+        if not model.model_path or not model.artifact_sha256:
+            return False
+        return verify_model_artifact(
+            settings.minio_bucket_models,
+            model.model_path,
+            model.artifact_sha256,
+        )
+
+    service = SecureModelDeploymentService(db)
+    try:
+        deployment = await service.deploy(
+            factory_id=factory_id,
+            model_id=model_uuid,
+            actor_id=uuid.UUID(current.user_id),
+            health_check=health_check,
+            reason=body.reason,
+        )
+        return {
+            "deployment_id": str(deployment.id),
+            "model_id": str(deployment.model_id),
+            "factory_id": str(deployment.factory_id),
+            "status": deployment.deployment_status,
+            "artifact_sha256": deployment.artifact_sha256,
+        }
+    except RuntimeError as exc:
+        await db.rollback()
+        raise HTTPException(503, str(exc)) from exc
+    except ValueError as exc:
+        await db.rollback()
+        raise HTTPException(400, str(exc)) from exc
 
 
 # ── Retraining endpoints ──────────────────────────────────────────────────────

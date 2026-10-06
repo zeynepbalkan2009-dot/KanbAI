@@ -18,7 +18,6 @@ def upgrade() -> None:
     op.add_column("ai_models", sa.Column("artifact_sha256", sa.String(length=64), nullable=True))
     op.add_column("ai_models", sa.Column("artifact_signature", sa.Text(), nullable=True))
     op.add_column("ai_models", sa.Column("signature_algorithm", sa.String(length=40), nullable=True))
-    op.add_column("ai_models", sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False))
     op.add_column("ai_models", sa.Column("approved_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("ai_models", sa.Column("retired_at", sa.DateTime(timezone=True), nullable=True))
     # Replace the legacy global uniqueness rule with factory-scoped identity.
@@ -51,7 +50,6 @@ def downgrade() -> None:
     op.drop_constraint("fk_ai_models_factory", "ai_models", type_="foreignkey")
     op.drop_column("ai_models", "retired_at")
     op.drop_column("ai_models", "approved_at")
-    op.drop_column("ai_models", "created_at")
     op.drop_column("ai_models", "signature_algorithm")
     op.drop_column("ai_models", "artifact_signature")
     op.drop_column("ai_models", "artifact_sha256")

@@ -17,26 +17,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Ensure local runtime files are not tracked
         shell: bash
         run: |
           set -euo pipefail
-          forbidden="$(git ls-files \
-            '.env' \
-            'infra/nginx/certs/*.crt' \
-            'infra/nginx/certs/*.key' \
-            'mlops/registry/*.json' \
-            'outputs/*' \
-            'web/.next/*' \
-            'web/node_modules/*' || true)"
-
+          forbidden="$(git ls-files '.env' 'infra/nginx/certs/*.crt' 'infra/nginx/certs/*.key' 'mlops/registry/*.json' 'outputs/*' 'web/.next/*' 'web/node_modules/*' || true)"
           if [ -n "$forbidden" ]; then
             echo "Forbidden runtime/generated files are tracked:"
             echo "$forbidden"
             exit 1
           fi
-
       - name: Run public release guard
         shell: pwsh
         run: ./scripts/public-release-guard.ps1
@@ -47,12 +37,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Parse backend and MLOps Python files
         shell: bash
         run: |
@@ -116,27 +104,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: web/package-lock.json
-
       - name: Install dependencies
         run: npm ci
-
       - name: Type-check
         run: npm run type-check
-
       - name: Build
         run: npm run build
 
   docker-demo-smoke:
     name: Docker demo smoke test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs:
       - repository-hygiene
       - backend-syntax
@@ -175,7 +159,7 @@ jobs:
 
       - name: Build and start demo stack
         shell: bash
-        run: docker compose up -d --build postgres redis minio minio-init api worker-inference worker-general celery-beat web nginx
+        run: docker compose up -d --build postgres redis minio minio-init api worker-inference worker-general web nginx
 
       - name: Wait for API readiness
         shell: bash

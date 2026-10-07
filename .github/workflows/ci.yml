@@ -175,7 +175,7 @@ jobs:
 
       - name: Build and start demo stack
         shell: bash
-        run: docker compose up -d --build
+        run: docker compose up -d --build postgres redis minio minio-init api worker-inference worker-general celery-beat web nginx
 
       - name: Wait for API readiness
         shell: bash

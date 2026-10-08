@@ -63,7 +63,7 @@ services:
 
   # â”€â”€ MinIO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   minio:
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     container_name: qc_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -80,20 +80,20 @@ services:
 
   # â”€â”€ MinIO bucket init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   minio-init:
-    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     container_name: qc_minio_init
     depends_on:
       minio:
         condition: service_started
     entrypoint: >
       /bin/sh -c "
-      until mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin123} >/dev/null 2>&1 && mc ls local >/dev/null 2>&1; do
+      until mcli alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin123} >/dev/null 2>&1 && mcli ls local >/dev/null 2>&1; do
         echo 'Waiting for MinIO API/auth readiness...';
         sleep 2;
       done;
-      mc mb --ignore-existing local/inspections;
-      mc mb --ignore-existing local/models;
-      mc mb --ignore-existing local/datasets;
+      mcli mb --ignore-existing local/inspections;
+      mcli mb --ignore-existing local/models;
+      mcli mb --ignore-existing local/datasets;
       # Model objects remain private; access is mediated by the API/Edge deployment flow.
       echo 'MinIO buckets ready';
       "

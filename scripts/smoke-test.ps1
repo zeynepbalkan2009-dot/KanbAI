@@ -131,19 +131,38 @@ try {
   if (-not $tempRoot) { $tempRoot = $env:TMPDIR }
   if (-not $tempRoot) { $tempRoot = [IO.Path]::GetTempPath() }
   $pngPath = Join-Path $tempRoot "kanbai-smoke-part.png"
-  # Generate a realistic high-resolution, well-exposed fixture so the real capture-quality gate is exercised.
+  # Generate a realistic high-resolution, well-exposed fixture without external Python packages,
+  # so the real capture-quality gate is exercised on a clean GitHub runner.
   $pythonFixture = @"
-from PIL import Image, ImageDraw
+import struct
+import zlib
 p = r"$($pngPath.Replace('\','\\'))"
-im = Image.new("RGB", (640, 480), (210, 210, 210))
-d = ImageDraw.Draw(im)
-for x in range(0, 640, 32):
-    d.line((x, 0, x, 480), fill=(80, 80, 80), width=2)
-for y in range(0, 480, 32):
-    d.line((0, y, 640, y), fill=(80, 80, 80), width=2)
-d.rectangle((160, 100, 480, 380), outline=(20, 20, 20), width=12)
-d.ellipse((260, 180, 380, 300), outline=(20, 20, 20), width=8)
-im.save(p, format="PNG")
+w, h = 640, 480
+rows = []
+for y in range(h):
+    row = bytearray([0])
+    for x in range(w):
+        grid = (x // 32 + y // 32) % 2
+        edge = (x % 32 < 2 or y % 32 < 2)
+        r = g = b = 205 if grid else 175
+        if edge:
+            r = g = b = 70
+        if 150 <= x <= 490 and 90 <= y <= 390 and (x in range(150, 161) or x in range(480, 491) or y in range(90, 101) or y in range(380, 391)):
+            r = g = b = 15
+        cx, cy = 320, 240
+        if abs((x - cx) * (x - cx) + (y - cy) * (y - cy) - 60 * 60) < 8 * 60:
+            r = g = b = 15
+        row.extend((r, g, b))
+    rows.append(bytes(row))
+raw = b"".join(rows)
+def chunk(kind, data):
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff)
+png = b"\x89PNG\r\n\x1a\n"
+png += chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+png += chunk(b"IDAT", zlib.compress(raw, 9))
+png += chunk(b"IEND", b"")
+with open(p, "wb") as f:
+    f.write(png)
 "@
   $pythonFixture | python -
   if ($LASTEXITCODE -ne 0) { Fail "could not generate smoke-test image fixture" }

@@ -7,8 +7,7 @@ Create Date: 2026-07-27
 
 from alembic import op
 
-from app.infrastructure.database.session import Base
-from app.infrastructure.database import models  # noqa: F401 - load model metadata
+from app.alembic.legacy_initial_models import BaselineBase
 
 
 revision = "20260727_0001"
@@ -19,9 +18,9 @@ depends_on = None
 
 def upgrade() -> None:
     bind = op.get_bind()
-    Base.metadata.create_all(bind=bind)
+    BaselineBase.metadata.create_all(bind=bind)
 
 
 def downgrade() -> None:
     bind = op.get_bind()
-    Base.metadata.drop_all(bind=bind)
+    BaselineBase.metadata.drop_all(bind=bind)

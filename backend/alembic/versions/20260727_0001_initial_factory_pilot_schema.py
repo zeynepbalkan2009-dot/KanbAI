@@ -7,7 +7,7 @@ Create Date: 2026-07-27
 
 from alembic import op
 
-from app.alembic.legacy_initial_models import BaselineBase
+from app.infrastructure.database.legacy_initial_models import BaselineBase
 
 
 revision = "20260727_0001"

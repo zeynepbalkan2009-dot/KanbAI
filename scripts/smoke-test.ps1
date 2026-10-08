@@ -131,8 +131,22 @@ try {
   if (-not $tempRoot) { $tempRoot = $env:TMPDIR }
   if (-not $tempRoot) { $tempRoot = [IO.Path]::GetTempPath() }
   $pngPath = Join-Path $tempRoot "kanbai-smoke-part.png"
-  $pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAIklEQVR4nGP8z8Dwn4ECwESJ5lEDRg0YNWDUgFEDBgAAoyICIRKzXzAAAAAASUVORK5CYII="
-  [IO.File]::WriteAllBytes($pngPath, [Convert]::FromBase64String($pngBase64))
+  # Generate a realistic high-resolution, well-exposed fixture so the real capture-quality gate is exercised.
+  $pythonFixture = @"
+from PIL import Image, ImageDraw
+p = r"$($pngPath.Replace('\','\\'))"
+im = Image.new("RGB", (640, 480), (210, 210, 210))
+d = ImageDraw.Draw(im)
+for x in range(0, 640, 32):
+    d.line((x, 0, x, 480), fill=(80, 80, 80), width=2)
+for y in range(0, 480, 32):
+    d.line((0, y, 640, y), fill=(80, 80, 80), width=2)
+d.rectangle((160, 100, 480, 380), outline=(20, 20, 20), width=12)
+d.ellipse((260, 180, 380, 300), outline=(20, 20, 20), width=8)
+im.save(p, format="PNG")
+"@
+  $pythonFixture | python -
+  if ($LASTEXITCODE -ne 0) { Fail "could not generate smoke-test image fixture" }
 
   $curlArgs = @(
     "-s",

@@ -134,6 +134,8 @@ jobs:
         run: |
           set -euo pipefail
           cp .env.example .env
+# GitHub smoke CI uses the maintained S3-compatible Silo test server because the AIStor image requires a commercial license for S3 operations.
+sed -i 's#quay.io/minio/aistor/minio:RELEASE.2026-09-19T17-05-25Z#pgsty/minio:RELEASE.2026-08-04T00-00-00Z#' docker-compose.yml
           python - <<'PY'
           from pathlib import Path
 

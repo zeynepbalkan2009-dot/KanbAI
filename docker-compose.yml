@@ -80,7 +80,7 @@ services:
 
   # â”€â”€ MinIO bucket init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   minio-init:
-    image: quay.io/minio/aistor/mc:RELEASE.2026-09-19T17-05-25Z
+    image: quay.io/minio/aistor/mc:RELEASE.2026-09-06T02-44-40Z
     container_name: qc_minio_init
     depends_on:
       minio:

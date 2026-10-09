@@ -62,7 +62,7 @@ class SecureModelDeploymentService:
             artifact_sha256=digest,
         )
 
-        if self.settings.edge_require_signed_model and not self.settings.model_signing_secret:
+        if self.settings.signed_model_required and not self.settings.model_signing_secret:
             raise ValueError("Model signing secret is not configured")
 
         from app.core.model_security import sign_model_manifest
@@ -72,7 +72,7 @@ class SecureModelDeploymentService:
             manifest,
             signature,
             self.settings.model_signing_secret,
-            required=self.settings.edge_require_signed_model,
+            required=self.settings.signed_model_required,
         )
 
         existing = await self.db.execute(
@@ -148,7 +148,7 @@ class SecureModelDeploymentService:
             manifest,
             model.artifact_signature,
             self.settings.model_signing_secret,
-            required=self.settings.edge_require_signed_model,
+            required=self.settings.signed_model_required,
         )
         validate_model_metrics(
             map50=model.accuracy_map50,

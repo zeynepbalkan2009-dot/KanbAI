@@ -68,3 +68,51 @@ A failed health check marks the candidate deployment as rolled back and restores
 ## Secure Deployment Integrity Check
 
 The deployment health gate verifies both the private object metadata and the SHA-256 digest of the stored artifact bytes. Metadata alone is not treated as proof of integrity.
+
+
+## Legacy Model Registry Migration Safety
+
+Migration `20261006_0007` intentionally leaves pre-existing `ai_models.factory_id` values as `NULL`. This is a compatibility state, not a model that is approved for secure production deployment. Do not infer ownership from model name, version, or a single historical deployment, and do not bulk-assign legacy rows to a factory: a legacy model may have been referenced by deployments from more than one factory. Legacy rows also do not automatically gain a trusted artifact digest or signature.
+
+### Read-only inventory before cutover
+
+Run these queries against a backup or read-only database session after the migration. They report legacy models and the distinct factory scopes in which each model was deployed; they do not modify data.
+
+```sql
+SELECT
+    m.id AS model_id,
+    m.name,
+    m.version,
+    COUNT(DISTINCT d.factory_id) AS deployment_factory_count,
+    ARRAY_REMOVE(ARRAY_AGG(DISTINCT d.factory_id), NULL) AS deployment_factory_ids,
+    COUNT(d.id) AS deployment_count
+FROM ai_models AS m
+LEFT JOIN model_deployments AS d ON d.model_id = m.id
+WHERE m.factory_id IS NULL
+GROUP BY m.id, m.name, m.version
+ORDER BY m.name, m.version;
+```
+
+To inspect whether any legacy model has deployment history spanning multiple factories:
+
+```sql
+SELECT
+    d.model_id,
+    ARRAY_AGG(DISTINCT d.factory_id) AS factory_ids,
+    COUNT(DISTINCT d.factory_id) AS factory_count
+FROM model_deployments AS d
+JOIN ai_models AS m ON m.id = d.model_id
+WHERE m.factory_id IS NULL
+GROUP BY d.model_id
+HAVING COUNT(DISTINCT d.factory_id) > 1;
+```
+
+### Supported transition
+
+1. Take and verify a database backup and preserve the legacy model/deployment audit history.
+2. Review the inventory with the customer/factory owner. Treat ambiguous or multi-factory history as unresolved; never choose a tenant automatically.
+3. Retrieve the original artifact from its trusted source, verify its provenance, and register it separately for the intended factory through the secure registration endpoint. This creates a factory-bound digest and signature under the current trust configuration.
+4. Validate candidate metrics and the stored artifact, then use the secure deployment endpoint. Keep the legacy record for historical traceability until an explicit retention decision is approved.
+5. If the original artifact or its provenance cannot be verified, retrain or re-export it from a trusted source instead of promoting the legacy row.
+
+The migration does not automatically promote, re-sign, or reassign legacy models. This is deliberate: database ownership, artifact integrity, and model trust must be established explicitly before a model enters the secure deployment lifecycle.

@@ -20,7 +20,7 @@ from app.core.model_security import (
     require_signed_model,
     validate_model_metrics,
 )
-from app.infrastructure.database.models import AIModel, AuditLog, ModelDeployment
+from app.infrastructure.database.models import AIModel, AuditLog, Factory, ModelDeployment
 
 
 HealthCheck = Callable[[AIModel], Awaitable[bool]]
@@ -159,6 +159,14 @@ class SecureModelDeploymentService:
             min_recall=self.settings.model_validation_min_recall,
         )
 
+        # Lock the factory row first. Locking only an existing active deployment
+        # does not serialize two simultaneous first deployments when no row exists.
+        factory_result = await self.db.execute(
+            select(Factory.id).where(Factory.id == factory_id).with_for_update()
+        )
+        if factory_result.scalar_one_or_none() is None:
+            raise ValueError("Factory does not exist")
+
         active_result = await self.db.execute(
             select(ModelDeployment)
             .where(
@@ -177,6 +185,10 @@ class SecureModelDeploymentService:
             previous.is_active = False
             previous.deployment_status = "retired"
             previous.retired_at = datetime.now(timezone.utc)
+            previous_model = await self.db.get(AIModel, previous.model_id)
+            if previous_model:
+                previous_model.is_production = False
+                previous_model.retired_at = datetime.now(timezone.utc)
 
         deployment = ModelDeployment(
             id=uuid.uuid4(),

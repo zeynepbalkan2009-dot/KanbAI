@@ -216,9 +216,11 @@ with open(p, "wb") as f:
     Fail "HITL queue is empty after demo seed"
   }
   $reviewTarget = $queue[0]
+  # Pilot mode accepts only operational decisions (pass/fail/out_of_scope);
+  # use a valid generic defect label so this exercises the real review path in both demo and pilot configurations.
   $review = Invoke-Json "Post" "$ApiBaseUrl/api/v1/hitl/$($reviewTarget.id)/review" $headers @{
-    decision = "wrong_prediction"
-    corrected_label = "crack"
+    decision = "fail"
+    corrected_label = "unclassified_defect"
     notes = "Smoke test HITL correction"
     dataset_contribution = $true
   }

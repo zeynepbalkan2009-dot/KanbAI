@@ -74,7 +74,7 @@ def test_required_signature_rejects_missing_and_invalid_signatures():
         version="1.0.0",
         artifact_sha256=artifact_sha256(b"artifact"),
     )
-    with pytest.raises(ValueError, match="signature is required"):
+    with pytest.raises(ValueError, match="artifact is required"):
         require_signed_model(manifest, None, "test-secret", required=True)
     with pytest.raises(ValueError, match="signature verification failed"):
         require_signed_model(manifest, "invalid-signature", "test-secret", required=True)

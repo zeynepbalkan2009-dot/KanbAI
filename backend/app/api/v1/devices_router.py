@@ -180,7 +180,7 @@ async def activate_device(body: DeviceActivateIn, db: AsyncSession = Depends(get
             DeviceActivationToken.token_hash == _hash_token(body.activation_token),
             DeviceActivationToken.used_at.is_(None),
             DeviceActivationToken.revoked_at.is_(None),
-        )
+        ).with_for_update()
     )
     token = result.scalar_one_or_none()
     if not token or token.expires_at < now:

@@ -109,6 +109,11 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.app_env == "production"
 
+    @property
+    def signed_model_required(self) -> bool:
+        """Never permit unsigned model deployment in pilot or production."""
+        return self.edge_require_signed_model or self.pilot_mode or self.is_production
+
 
 @lru_cache
 def get_settings() -> Settings:

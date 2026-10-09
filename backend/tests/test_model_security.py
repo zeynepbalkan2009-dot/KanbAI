@@ -107,25 +107,10 @@ def test_signature_rejects_cross_factory_and_model_name_replay():
     assert not verify_model_manifest(other_name, signature, b"test-secret")
 
 def test_signed_model_policy_cannot_be_disabled_in_pilot_or_production():
-    from app.core.config import Settings
+    from app.core.model_security import signed_model_policy_required
 
-    pilot = Settings.model_construct(
-        app_env="development",
-        pilot_mode=True,
-        edge_require_signed_model=False,
-    )
-    production = Settings.model_construct(
-        app_env="production",
-        pilot_mode=False,
-        edge_require_signed_model=False,
-    )
-    development = Settings.model_construct(
-        app_env="development",
-        pilot_mode=False,
-        edge_require_signed_model=False,
-    )
-
-    assert pilot.signed_model_required is True
-    assert production.signed_model_required is True
-    assert development.signed_model_required is False
+    assert signed_model_policy_required(edge_required=False, pilot_mode=True, production=False)
+    assert signed_model_policy_required(edge_required=False, pilot_mode=False, production=True)
+    assert not signed_model_policy_required(edge_required=False, pilot_mode=False, production=False)
+    assert signed_model_policy_required(edge_required=True, pilot_mode=False, production=False)
 

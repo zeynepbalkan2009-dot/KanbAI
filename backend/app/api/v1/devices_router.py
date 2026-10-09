@@ -119,10 +119,16 @@ async def register_device(
     if existing.scalar_one_or_none():
         raise ConflictError("Device UUID already registered")
 
+    tenant_uuid = uuid.UUID(current.tenant_id)
+    if body.station_id:
+        station = await db.get(Station, body.station_id)
+        if not station or station.factory_id != tenant_uuid:
+            raise NotFoundError("Station")
+
     raw_device_token, device_token_hash = issue_device_token()
     device = Device(
         id=uuid.uuid4(),
-        factory_id=uuid.UUID(current.tenant_id),
+        factory_id=tenant_uuid,
         device_uuid=body.device_uuid,
         name=body.name,
         location_label=body.location_label,

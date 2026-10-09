@@ -46,6 +46,28 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # The pre-migration schema enforced global (name, version) uniqueness.
+    # Multiple factories may legitimately have the same pair after upgrade, so
+    # fail before changing anything rather than partially downgrading or
+    # silently deleting tenant-scoped model identities.
+    bind = op.get_bind()
+    duplicate = bind.execute(
+        sa.text(
+            """
+            SELECT name, version
+            FROM ai_models
+            GROUP BY name, version
+            HAVING COUNT(*) > 1
+            LIMIT 1
+            """
+        )
+    ).first()
+    if duplicate:
+        raise RuntimeError(
+            "Cannot downgrade model registry: duplicate (name, version) values "
+            "exist across factory scopes. Resolve these conflicts explicitly "
+            "before retrying the downgrade."
+        )
     op.drop_index("ix_model_deployments_factory_status", table_name="model_deployments")
     op.drop_constraint("fk_model_deployments_rollback", "model_deployments", type_="foreignkey")
     op.drop_column("model_deployments", "rollback_of_deployment_id")

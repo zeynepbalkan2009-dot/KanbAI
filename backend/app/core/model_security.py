@@ -18,6 +18,11 @@ def canonical_model_manifest(*, factory_id: str, model_name: str, version: str, 
     return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
+def signed_model_policy_required(*, edge_required: bool, pilot_mode: bool, production: bool) -> bool:
+    """Require trusted model signatures whenever edge policy, pilot, or production demands it."""
+    return edge_required or pilot_mode or production
+
+
 def artifact_sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 

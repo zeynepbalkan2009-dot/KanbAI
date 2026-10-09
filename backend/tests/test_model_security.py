@@ -35,3 +35,46 @@ def test_model_validation_gate_rejects_weak_candidate():
 def test_model_validation_gate_accepts_candidate():
     from app.core.model_security import validate_model_metrics
     validate_model_metrics(map50=0.91, precision=0.89, recall=0.87, min_map50=0.80, min_precision=0.80, min_recall=0.80)
+
+
+def test_signature_rejects_changed_artifact_hash_or_model_version():
+    digest = artifact_sha256(b"trusted-artifact")
+    manifest = canonical_model_manifest(
+        factory_id="factory-a",
+        model_name="inspection",
+        version="1.0.0",
+        artifact_sha256=digest,
+    )
+    signature = sign_model_manifest(manifest, b"test-secret")
+
+    changed_hash = canonical_model_manifest(
+        factory_id="factory-a",
+        model_name="inspection",
+        version="1.0.0",
+        artifact_sha256=artifact_sha256(b"tampered-artifact"),
+    )
+    changed_version = canonical_model_manifest(
+        factory_id="factory-a",
+        model_name="inspection",
+        version="1.0.1",
+        artifact_sha256=digest,
+    )
+
+    assert not verify_model_manifest(changed_hash, signature, b"test-secret")
+    assert not verify_model_manifest(changed_version, signature, b"test-secret")
+
+
+def test_required_signature_rejects_missing_and_invalid_signatures():
+    import pytest
+    from app.core.model_security import require_signed_model
+
+    manifest = canonical_model_manifest(
+        factory_id="factory-a",
+        model_name="inspection",
+        version="1.0.0",
+        artifact_sha256=artifact_sha256(b"artifact"),
+    )
+    with pytest.raises(ValueError, match="signature is required"):
+        require_signed_model(manifest, None, "test-secret", required=True)
+    with pytest.raises(ValueError, match="signature verification failed"):
+        require_signed_model(manifest, "invalid-signature", "test-secret", required=True)

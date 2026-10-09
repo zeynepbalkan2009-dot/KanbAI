@@ -112,7 +112,13 @@ class Settings(BaseSettings):
     @property
     def signed_model_required(self) -> bool:
         """Never permit unsigned model deployment in pilot or production."""
-        return self.edge_require_signed_model or self.pilot_mode or self.is_production
+        from app.core.model_security import signed_model_policy_required
+
+        return signed_model_policy_required(
+            edge_required=self.edge_require_signed_model,
+            pilot_mode=self.pilot_mode,
+            production=self.is_production,
+        )
 
 
 @lru_cache

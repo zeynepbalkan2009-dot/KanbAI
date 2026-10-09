@@ -78,3 +78,30 @@ def test_required_signature_rejects_missing_and_invalid_signatures():
         require_signed_model(manifest, None, "test-secret", required=True)
     with pytest.raises(ValueError, match="signature verification failed"):
         require_signed_model(manifest, "invalid-signature", "test-secret", required=True)
+
+
+def test_signature_rejects_cross_factory_and_model_name_replay():
+    digest = artifact_sha256(b"factory-private-artifact")
+    manifest = canonical_model_manifest(
+        factory_id="factory-a",
+        model_name="inspection-a",
+        version="2.0.0",
+        artifact_sha256=digest,
+    )
+    signature = sign_model_manifest(manifest, b"test-secret")
+
+    other_factory = canonical_model_manifest(
+        factory_id="factory-b",
+        model_name="inspection-a",
+        version="2.0.0",
+        artifact_sha256=digest,
+    )
+    other_name = canonical_model_manifest(
+        factory_id="factory-a",
+        model_name="inspection-b",
+        version="2.0.0",
+        artifact_sha256=digest,
+    )
+
+    assert not verify_model_manifest(other_factory, signature, b"test-secret")
+    assert not verify_model_manifest(other_name, signature, b"test-secret")

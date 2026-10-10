@@ -4,15 +4,20 @@ import uuid
 from typing import Optional
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel
 from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.auth.service import get_current_user, CurrentUser, require_role
-from app.infrastructure.database.models import Device, DeviceActivationToken, Station
+from app.infrastructure.database.models import Device, DeviceActivationToken, Station, EdgeSyncEvent
 from app.infrastructure.database.session import get_db
-from app.core.exceptions import NotFoundError, ConflictError
+from app.core.exceptions import NotFoundError, ConflictError, UnauthorizedError, ValidationError
+from app.core.config import get_settings
+from app.core.edge_security import issue_device_token, verify_device_token, sha256_json
+
+settings = get_settings()
 
 router = APIRouter(prefix="/devices", tags=["devices"])
 
@@ -29,6 +34,7 @@ class DeviceOut(BaseModel):
     status: str = "pending"
     station_id: Optional[uuid.UUID] = None
     activated_at: Optional[datetime] = None
+    device_credential: Optional[str] = None
     created_at: datetime
     model_config = {"from_attributes": True}
 
@@ -50,6 +56,21 @@ class ActivationTokenOut(BaseModel):
     activation_token: str
     expires_at: datetime
     station_id: Optional[uuid.UUID] = None
+
+
+class EdgeSyncEventIn(BaseModel):
+    event_id: str
+    event_type: str
+    payload: dict
+
+
+class EdgeSyncBatchIn(BaseModel):
+    events: list[EdgeSyncEventIn]
+
+
+class EdgeSyncAck(BaseModel):
+    accepted: list[str]
+    duplicates: list[str]
 
 
 class DeviceActivateIn(BaseModel):
@@ -99,19 +120,30 @@ async def register_device(
     if existing.scalar_one_or_none():
         raise ConflictError("Device UUID already registered")
 
+    tenant_uuid = uuid.UUID(current.tenant_id)
+    if body.station_id:
+        station = await db.get(Station, body.station_id)
+        if not station or station.factory_id != tenant_uuid:
+            raise NotFoundError("Station")
+
+    raw_device_token, device_token_hash = issue_device_token()
     device = Device(
         id=uuid.uuid4(),
-        factory_id=uuid.UUID(current.tenant_id),
+        factory_id=tenant_uuid,
         device_uuid=body.device_uuid,
         name=body.name,
         location_label=body.location_label,
         station_id=body.station_id,
         status="active",
         activated_at=datetime.now(timezone.utc),
+        device_credential_hash=device_token_hash,
+        credential_issued_at=datetime.now(timezone.utc),
     )
     db.add(device)
     await db.flush()
-    return device
+    result = DeviceOut.model_validate(device)
+    result.device_credential = raw_device_token
+    return result
 
 
 @router.post("/activation-token", response_model=ActivationTokenOut, status_code=201)
@@ -149,7 +181,7 @@ async def activate_device(body: DeviceActivateIn, db: AsyncSession = Depends(get
             DeviceActivationToken.token_hash == _hash_token(body.activation_token),
             DeviceActivationToken.used_at.is_(None),
             DeviceActivationToken.revoked_at.is_(None),
-        )
+        ).with_for_update()
     )
     token = result.scalar_one_or_none()
     if not token or token.expires_at < now:
@@ -160,9 +192,23 @@ async def activate_device(body: DeviceActivateIn, db: AsyncSession = Depends(get
     device = existing.scalar_one_or_none()
     if device and device.factory_id != token.factory_id:
         raise ConflictError("Device UUID already registered for another factory")
+    raw_device_token, device_token_hash = issue_device_token()
     if not device:
-        device = Device(id=uuid.uuid4(), factory_id=token.factory_id, device_uuid=body.device_uuid, name=body.name, location_label=body.location_label, station_id=token.station_id)
+        device = Device(
+            id=uuid.uuid4(),
+            factory_id=token.factory_id,
+            device_uuid=body.device_uuid,
+            name=body.name,
+            location_label=body.location_label,
+            station_id=token.station_id,
+            device_credential_hash=device_token_hash,
+            credential_issued_at=now,
+        )
         db.add(device)
+    else:
+        device.device_credential_hash = device_token_hash
+        device.credential_issued_at = now
+        device.credential_revoked_at = None
     device.name = body.name
     device.location_label = body.location_label or device.location_label
     device.station_id = token.station_id or device.station_id
@@ -174,7 +220,89 @@ async def activate_device(body: DeviceActivateIn, db: AsyncSession = Depends(get
     token.used_at = now
     token.used_by_device_id = device.id
     await db.flush()
-    return device
+    result = DeviceOut.model_validate(device)
+    result.device_credential = raw_device_token
+    return result
+
+
+@router.post("/{device_id}/sync", response_model=EdgeSyncAck)
+async def sync_device_events(
+    device_id: str,
+    body: EdgeSyncBatchIn,
+    x_kanbai_device_token: Optional[str] = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Authenticated, idempotent Edge -> Cloud event ingress."""
+    if not settings.edge_sync_enabled:
+        raise ValidationError("Edge sync is disabled")
+    if len(body.events) > settings.edge_sync_batch_max:
+        raise ValidationError("Sync batch exceeds configured maximum")
+
+    try:
+        device_uuid = uuid.UUID(device_id)
+    except ValueError as exc:
+        raise ValidationError("Invalid device id") from exc
+
+    device = await db.get(Device, device_uuid)
+    if not device or not device.is_active or device.status == "revoked":
+        raise UnauthorizedError("Device is inactive or revoked")
+
+    if settings.edge_device_auth_enabled:
+        if not x_kanbai_device_token or not device.device_credential_hash:
+            raise UnauthorizedError("Device credential required")
+        if device.credential_revoked_at is not None:
+            raise UnauthorizedError("Device credential revoked")
+        if not verify_device_token(x_kanbai_device_token, device.device_credential_hash):
+            raise UnauthorizedError("Invalid device credential")
+
+    accepted: list[str] = []
+    duplicates: list[str] = []
+    # Track IDs within this request as well as persisted rows: pending ORM
+    # inserts are not visible to the SELECT below until the session is flushed.
+    batch_event_ids: set[str] = set()
+    now = datetime.now(timezone.utc)
+
+    for event in body.events:
+        if len(event.event_id) > 120 or len(event.event_type) > 80:
+            raise ValidationError("Edge event id or type is too long")
+        payload_size = len(event.model_dump_json().encode("utf-8"))
+        if payload_size > settings.edge_event_max_payload_bytes:
+            raise ValidationError("Edge event payload exceeds configured maximum")
+
+        if event.event_id in batch_event_ids:
+            duplicates.append(event.event_id)
+            continue
+        batch_event_ids.add(event.event_id)
+
+        # Enforce idempotency in PostgreSQL itself. A SELECT-then-INSERT check
+        # can race when two Edge requests deliver the same event concurrently.
+        statement = (
+            pg_insert(EdgeSyncEvent)
+            .values(
+                id=uuid.uuid4(),
+                factory_id=device.factory_id,
+                device_id=device.id,
+                event_id=event.event_id,
+                event_type=event.event_type,
+                payload=event.payload,
+                payload_sha256=sha256_json(event.payload),
+                status="received",
+                attempts=0,
+                available_at=now,
+            )
+            .on_conflict_do_nothing(constraint="uq_edge_sync_factory_event")
+            .returning(EdgeSyncEvent.event_id)
+        )
+        inserted = await db.execute(statement)
+        if inserted.scalar_one_or_none() is None:
+            duplicates.append(event.event_id)
+        else:
+            accepted.append(event.event_id)
+
+    device.last_seen_at = now
+    device.status = "online"
+    await db.flush()
+    return EdgeSyncAck(accepted=accepted, duplicates=duplicates)
 
 
 @router.post("/{device_id}/heartbeat", response_model=DeviceOut)
@@ -213,6 +341,7 @@ async def revoke_device(
     device.is_active = False
     device.status = "revoked"
     device.revoked_at = datetime.now(timezone.utc)
+    device.credential_revoked_at = datetime.now(timezone.utc)
     await db.flush()
     return device
 

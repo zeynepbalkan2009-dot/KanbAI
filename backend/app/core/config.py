@@ -74,6 +74,21 @@ class Settings(BaseSettings):
     # Pilot deployments use real factory data and must never create or reset demo data.
     pilot_mode: bool = False
 
+    # Secure Edge / Cloud controls. Pilot and production are fail-closed by default.
+    edge_device_auth_enabled: bool = True
+    edge_sync_enabled: bool = True
+    edge_sync_batch_max: int = 100
+    edge_event_max_payload_bytes: int = 262144
+    # Upper bound for uploaded model artifacts; prevent unbounded memory use at registration.
+    model_artifact_max_bytes: int = 536870912  # 512 MiB
+    edge_token_clock_skew_seconds: int = 60
+    edge_require_signed_model: bool = True
+    # Signing secret is intentionally optional at config-load time; secure deployment fails closed when required but missing.
+    model_signing_secret: str = ""
+    model_validation_min_map50: float = 0.80
+    model_validation_min_precision: float = 0.80
+    model_validation_min_recall: float = 0.80
+
     # Capture quality gate (image usability only; never a product quality decision)
     capture_quality_gate_enabled: bool = True
     capture_min_width: int = 640
@@ -95,6 +110,17 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def signed_model_required(self) -> bool:
+        """Never permit unsigned model deployment in pilot or production."""
+        from app.core.model_security import signed_model_policy_required
+
+        return signed_model_policy_required(
+            edge_required=self.edge_require_signed_model,
+            pilot_mode=self.pilot_mode,
+            production=self.is_production,
+        )
 
 
 @lru_cache

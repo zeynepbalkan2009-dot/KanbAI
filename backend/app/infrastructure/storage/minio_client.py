@@ -1,4 +1,5 @@
 import io
+import hashlib
 import uuid
 from datetime import timedelta
 from pathlib import Path
@@ -83,3 +84,52 @@ def validate_image(data: bytes, content_type: str) -> None:
             return
 
     raise ValueError("File does not match allowed image formats")
+
+
+def upload_model_artifact(
+    data: bytes,
+    *,
+    factory_id: str,
+    model_id: str,
+    sha256: str,
+    filename: str = "model.bin",
+) -> str:
+    """Store a model artifact under a factory-private key with integrity metadata."""
+    client = get_minio_client()
+    suffix = Path(filename).suffix or ".bin"
+    key = f"{factory_id}/models/{model_id}/{sha256}{suffix}"
+    client.put_object(
+        bucket_name=settings.minio_bucket_models,
+        object_name=key,
+        data=io.BytesIO(data),
+        length=len(data),
+        content_type="application/octet-stream",
+        metadata={"X-Amz-Meta-Sha256": sha256},
+    )
+    logger.info("model_artifact_uploaded", key=key, factory_id=factory_id, model_id=model_id)
+    return key
+
+
+def verify_model_artifact(bucket: str, key: str, expected_sha256: str) -> bool:
+    """Artifact health check: object exists and carries the expected integrity metadata."""
+    client = get_minio_client()
+    try:
+        stat = client.stat_object(bucket, key)
+    except S3Error:
+        return False
+    metadata = {str(k).lower(): str(v) for k, v in (stat.metadata or {}).items()}
+    if stat.size <= 0 or metadata.get("x-amz-meta-sha256") != expected_sha256.lower():
+        return False
+    response = None
+    try:
+        response = client.get_object(bucket, key)
+        digest = hashlib.sha256()
+        for chunk in response.stream(1024 * 1024):
+            digest.update(chunk)
+        return digest.hexdigest() == expected_sha256.lower()
+    except S3Error:
+        return False
+    finally:
+        if response is not None:
+            response.close()
+            response.release_conn()

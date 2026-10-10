@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 jobs:
@@ -16,26 +17,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Ensure local runtime files are not tracked
         shell: bash
         run: |
           set -euo pipefail
-          forbidden="$(git ls-files \
-            '.env' \
-            'infra/nginx/certs/*.crt' \
-            'infra/nginx/certs/*.key' \
-            'mlops/registry/*.json' \
-            'outputs/*' \
-            'web/.next/*' \
-            'web/node_modules/*' || true)"
-
+          forbidden="$(git ls-files '.env' 'infra/nginx/certs/*.crt' 'infra/nginx/certs/*.key' 'mlops/registry/*.json' 'outputs/*' 'web/.next/*' 'web/node_modules/*' || true)"
           if [ -n "$forbidden" ]; then
             echo "Forbidden runtime/generated files are tracked:"
             echo "$forbidden"
             exit 1
           fi
-
       - name: Run public release guard
         shell: pwsh
         run: ./scripts/public-release-guard.ps1
@@ -46,12 +37,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Parse backend and MLOps Python files
         shell: bash
         run: |
@@ -86,6 +75,26 @@ jobs:
           print(f"Parsed {checked} Python files successfully.")
           PY
 
+  backend-unit-tests:
+    name: Backend unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      PYTHONPATH: .
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: pip install --disable-pip-version-check pytest==8.2.0
+      - name: Run Edge and model security tests
+        run: pytest -q tests/test_edge_outbox.py tests/test_model_security.py
+
   web:
     name: Web type-check and build
     runs-on: ubuntu-latest
@@ -95,27 +104,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: web/package-lock.json
-
       - name: Install dependencies
         run: npm ci
-
       - name: Type-check
         run: npm run type-check
-
       - name: Build
         run: npm run build
 
   docker-demo-smoke:
     name: Docker demo smoke test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs:
       - repository-hygiene
       - backend-syntax
@@ -152,9 +157,36 @@ jobs:
           path.write_text("\n".join(f"{key}={value}" for key, value in values.items()) + "\n")
           PY
 
-      - name: Build and start demo stack
+      - name: Build backend and web images
         shell: bash
-        run: docker compose up -d --build
+        run: docker compose build --progress=plain api worker-inference worker-general web
+
+      - name: Start infrastructure
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose up -d postgres redis minio
+          for attempt in {1..90}; do
+            if curl -fsS http://localhost:9000/minio/health/live >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose ps
+          docker compose logs --no-color minio
+          exit 1
+
+      - name: Initialize MinIO buckets
+        shell: bash
+        run: docker compose run --rm minio-init
+
+      - name: Run database migration
+        shell: bash
+        run: docker compose run --rm api alembic upgrade head
+
+      - name: Start application stack
+        shell: bash
+        run: docker compose up -d api worker-inference worker-general web nginx
 
       - name: Wait for API readiness
         shell: bash
@@ -169,10 +201,6 @@ jobs:
           docker compose ps
           docker compose logs --no-color api
           exit 1
-
-      - name: Run database migration
-        shell: bash
-        run: docker compose exec -T api alembic upgrade head
 
       - name: Run factory demo acceptance smoke test
         shell: pwsh

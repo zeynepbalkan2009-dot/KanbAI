@@ -134,9 +134,10 @@ async def seed_demo_data(conn) -> None:
     """))
 
     await conn.execute(text("""
-        INSERT INTO ai_models (id, name, version, architecture, is_production, class_labels, created_at, updated_at)
+        INSERT INTO ai_models (id, factory_id, name, version, architecture, is_production, class_labels, created_at, updated_at)
         VALUES (
             '00000000-0000-0000-0000-000000000301',
+            'f0000000-0000-0000-0000-000000000001',
             'qc-defect-detector',
             'mock-v1.0',
             'mock',
@@ -147,12 +148,13 @@ async def seed_demo_data(conn) -> None:
     """))
 
     await conn.execute(text("""
-        INSERT INTO model_deployments (id, factory_id, model_id, is_active, created_at, updated_at)
+        INSERT INTO model_deployments (id, factory_id, model_id, is_active, deployment_status, created_at, updated_at)
         VALUES (
             '00000000-0000-0000-0000-000000000401',
             'f0000000-0000-0000-0000-000000000001',
             '00000000-0000-0000-0000-000000000301',
             true,
+            'active',
             NOW(), NOW()
         ) ON CONFLICT DO NOTHING
     """))

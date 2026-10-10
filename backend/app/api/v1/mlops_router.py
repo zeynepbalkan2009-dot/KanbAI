@@ -148,7 +148,23 @@ async def secure_register_model(
     db: AsyncSession = Depends(get_db),
 ):
     """Register a factory-private artifact with hash/signature and private storage."""
-    data = await file.read()
+    # Read in bounded chunks instead of trusting an unbounded UploadFile.read().
+    # The configured cap protects API workers from oversized model uploads.
+    max_bytes = max(1, settings.model_artifact_max_bytes)
+    chunks: list[bytes] = []
+    total_bytes = 0
+    while True:
+        chunk = await file.read(min(1024 * 1024, max_bytes - total_bytes + 1))
+        if not chunk:
+            break
+        total_bytes += len(chunk)
+        if total_bytes > max_bytes:
+            raise HTTPException(
+                413,
+                f"Model artifact exceeds the configured {max_bytes}-byte limit",
+            )
+        chunks.append(chunk)
+    data = b"".join(chunks)
     if not data:
         raise HTTPException(400, "Empty model artifact")
     factory_id = uuid.UUID(current.tenant_id)

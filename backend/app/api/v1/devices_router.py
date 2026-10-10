@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel
 from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domains.auth.service import get_current_user, CurrentUser, require_role
@@ -273,29 +274,30 @@ async def sync_device_events(
             continue
         batch_event_ids.add(event.event_id)
 
-        existing = await db.execute(
-            select(EdgeSyncEvent).where(
-                EdgeSyncEvent.factory_id == device.factory_id,
-                EdgeSyncEvent.event_id == event.event_id,
+        # Enforce idempotency in PostgreSQL itself. A SELECT-then-INSERT check
+        # can race when two Edge requests deliver the same event concurrently.
+        statement = (
+            pg_insert(EdgeSyncEvent)
+            .values(
+                id=uuid.uuid4(),
+                factory_id=device.factory_id,
+                device_id=device.id,
+                event_id=event.event_id,
+                event_type=event.event_type,
+                payload=event.payload,
+                payload_sha256=sha256_json(event.payload),
+                status="received",
+                attempts=0,
+                available_at=now,
             )
+            .on_conflict_do_nothing(constraint="uq_edge_sync_factory_event")
+            .returning(EdgeSyncEvent.event_id)
         )
-        if existing.scalar_one_or_none():
+        inserted = await db.execute(statement)
+        if inserted.scalar_one_or_none() is None:
             duplicates.append(event.event_id)
-            continue
-
-        db.add(EdgeSyncEvent(
-            id=uuid.uuid4(),
-            factory_id=device.factory_id,
-            device_id=device.id,
-            event_id=event.event_id,
-            event_type=event.event_type,
-            payload=event.payload,
-            payload_sha256=sha256_json(event.payload),
-            status="received",
-            attempts=0,
-            available_at=now,
-        ))
-        accepted.append(event.event_id)
+        else:
+            accepted.append(event.event_id)
 
     device.last_seen_at = now
     device.status = "online"

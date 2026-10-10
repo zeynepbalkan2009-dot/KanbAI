@@ -256,6 +256,9 @@ async def sync_device_events(
 
     accepted: list[str] = []
     duplicates: list[str] = []
+    # Track IDs within this request as well as persisted rows: pending ORM
+    # inserts are not visible to the SELECT below until the session is flushed.
+    batch_event_ids: set[str] = set()
     now = datetime.now(timezone.utc)
 
     for event in body.events:
@@ -264,6 +267,11 @@ async def sync_device_events(
         payload_size = len(event.model_dump_json().encode("utf-8"))
         if payload_size > settings.edge_event_max_payload_bytes:
             raise ValidationError("Edge event payload exceeds configured maximum")
+
+        if event.event_id in batch_event_ids:
+            duplicates.append(event.event_id)
+            continue
+        batch_event_ids.add(event.event_id)
 
         existing = await db.execute(
             select(EdgeSyncEvent).where(

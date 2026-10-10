@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     edge_sync_enabled: bool = True
     edge_sync_batch_max: int = 100
     edge_event_max_payload_bytes: int = 262144
+    # Upper bound for uploaded model artifacts; prevent unbounded memory use at registration.
+    model_artifact_max_bytes: int = 536870912  # 512 MiB
     edge_token_clock_skew_seconds: int = 60
     edge_require_signed_model: bool = True
     # Signing secret is intentionally optional at config-load time; secure deployment fails closed when required but missing.
